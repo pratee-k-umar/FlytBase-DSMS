@@ -28,12 +28,50 @@ def check_python_dependencies():
     """Check and install Python dependencies if needed"""
     print_colored("Checking Python dependencies...", Colors.CYAN)
 
-    # Find virtual environment Python
-    venv_python = os.path.join("src", "dsms", "venv", "Scripts", "python.exe")
-    if not os.path.exists(venv_python):
-        venv_python = os.path.join("src", "dsms", ".venv", "Scripts", "python.exe")
-    if not os.path.exists(venv_python):
-        venv_python = sys.executable  # Fallback to system Python
+    # Find or create virtual environment
+    venv_paths = [
+        os.path.join("src", "dsms", "venv"),
+        os.path.join("src", "dsms", ".venv"),
+    ]
+
+    venv_path = None
+    venv_python = None
+
+    # Check if any venv exists
+    for path in venv_paths:
+        python_exe = (
+            os.path.join(path, "Scripts", "python.exe")
+            if sys.platform == "win32"
+            else os.path.join(path, "bin", "python")
+        )
+        if os.path.exists(python_exe):
+            venv_path = path
+            venv_python = python_exe
+            break
+
+    # Create venv if it doesn't exist
+    if venv_python is None:
+        print_colored(
+            "[INFO] Virtual environment not found, creating one...", Colors.YELLOW
+        )
+        venv_path = venv_paths[0]  # Use first path (venv)
+
+        try:
+            subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
+            venv_python = (
+                os.path.join(venv_path, "Scripts", "python.exe")
+                if sys.platform == "win32"
+                else os.path.join(venv_path, "bin", "python")
+            )
+            print_colored(
+                f"[OK] Virtual environment created at {venv_path}", Colors.GREEN
+            )
+        except Exception as e:
+            print_colored(
+                f"[ERROR] Failed to create virtual environment: {e}", Colors.RED
+            )
+            print_colored("[INFO] Falling back to system Python", Colors.YELLOW)
+            venv_python = sys.executable
 
     requirements_file = os.path.join("src", "dsms", "requirements.txt")
 
@@ -193,12 +231,30 @@ def start_django_server():
     """Start Django development server"""
     print_colored("Starting Django server...", Colors.GREEN)
 
-    # Use virtual environment
-    venv_python = os.path.join("src", "dsms", "venv", "Scripts", "python.exe")
-    if not os.path.exists(venv_python):
-        venv_python = os.path.join("src", "dsms", ".venv", "Scripts", "python.exe")
-    if not os.path.exists(venv_python):
+    # Find virtual environment Python
+    venv_paths = [
+        (
+            os.path.join("src", "dsms", "venv", "Scripts", "python.exe"),
+            os.path.join("src", "dsms", "venv", "bin", "python"),
+        ),
+        (
+            os.path.join("src", "dsms", ".venv", "Scripts", "python.exe"),
+            os.path.join("src", "dsms", ".venv", "bin", "python"),
+        ),
+    ]
+
+    venv_python = None
+    for win_path, unix_path in venv_paths:
+        if sys.platform == "win32" and os.path.exists(win_path):
+            venv_python = win_path
+            break
+        elif sys.platform != "win32" and os.path.exists(unix_path):
+            venv_python = unix_path
+            break
+
+    if venv_python is None:
         venv_python = sys.executable  # Fallback to system Python
+        print_colored("[WARNING] Using system Python (venv not found)", Colors.YELLOW)
 
     # manage.py is now at root
     return subprocess.Popen([venv_python, "manage.py", "runserver", "0.0.0.0:8000"])
