@@ -1,0 +1,36 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Layout from "./components/common/Layout";
+import Analytics from "./pages/Analytics";
+import Dashboard from "./pages/Dashboard";
+import LiveMonitor from "./pages/LiveMonitor";
+import MissionPlanner from "./pages/MissionPlanner";
+import Missions from "./pages/Missions";
+
+function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Layout />}>
+                    <Route
+                        index
+                        element={<Navigate to="/dashboard" replace />}
+                    />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="missions" element={<Missions />} />
+                    <Route
+                        path="mission/planner"
+                        element={<MissionPlanner />}
+                    />
+                    <Route path="mission/monitor" element={<LiveMonitor />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route
+                        path="*"
+                        element={<Navigate to="/dashboard" replace />}
+                    />
+                </Route>
+            </Routes>
+        </BrowserRouter>
+    );
+}
+
+export default App;

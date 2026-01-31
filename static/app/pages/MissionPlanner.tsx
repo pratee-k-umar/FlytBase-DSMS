@@ -1,0 +1,381 @@
+import { droneService } from "@/services/droneService";
+import { missionService } from "@/services/missionService";
+import type { CreateMissionRequest } from "@/types/mission";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LatLng } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { useState } from "react";
+import {
+    MapContainer,
+    Marker,
+    Polygon,
+    TileLayer,
+    useMapEvents,
+} from "react-leaflet";
+
+// Fix Leaflet icon issue
+import L from "leaflet";
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+    iconUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+    shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
+function MapClickHandler({
+    onMapClick,
+}: {
+    onMapClick: (latlng: LatLng) => void;
+}) {
+    useMapEvents({
+        click: (e) => {
+            onMapClick(e.latlng);
+        },
+    });
+    return null;
+}
+
+export default function MissionPlanner() {
+    const queryClient = useQueryClient();
+    const [polygonPoints, setPolygonPoints] = useState<LatLng[]>([]);
+    const [formData, setFormData] = useState({
+        name: "",
+        description: "",
+        site_name: "",
+        survey_type: "mapping" as const,
+        altitude: 50,
+        speed: 10,
+        overlap: 70,
+        assigned_drone_id: "",
+    });
+
+    const { data: dronesData } = useQuery({
+        queryKey: ["drones"],
+        queryFn: droneService.getAll,
+    });
+
+    const createMissionMutation = useMutation({
+        mutationFn: (data: CreateMissionRequest) => missionService.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["missions"] });
+            setPolygonPoints([]);
+            setFormData({
+                name: "",
+                description: "",
+                site_name: "",
+                survey_type: "mapping",
+                altitude: 50,
+                speed: 10,
+                overlap: 70,
+                assigned_drone_id: "",
+            });
+        },
+    });
+
+    const handleMapClick = (latlng: LatLng) => {
+        setPolygonPoints([...polygonPoints, latlng]);
+    };
+
+    const handleClearPolygon = () => {
+        setPolygonPoints([]);
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!formData.name || !formData.site_name) {
+            alert("Please fill in mission name and site name");
+            return;
+        }
+
+        if (polygonPoints.length < 3) {
+            alert("Please draw a survey area (at least 3 points)");
+            return;
+        }
+
+        const coverage_area = {
+            type: "Polygon",
+            coordinates: [
+                [
+                    ...polygonPoints.map((p) => [p.lng, p.lat]),
+                    [polygonPoints[0].lng, polygonPoints[0].lat],
+                ],
+            ],
+        };
+
+        createMissionMutation.mutate({
+            ...formData,
+            coverage_area,
+        });
+    };
+
+    const availableDrones =
+        dronesData?.data?.filter((d) => d.status === "available") || [];
+
+    return (
+        <div className="p-8">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-foreground">
+                    Mission Planner
+                </h1>
+                <p className="mt-2 text-muted-foreground">
+                    Plan and configure drone survey missions
+                </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-card-foreground">
+                                Survey Area
+                            </h2>
+                            {polygonPoints.length > 0 && (
+                                <button
+                                    onClick={handleClearPolygon}
+                                    className="text-sm text-muted-foreground hover:text-foreground px-3 py-1 rounded border"
+                                >
+                                    Clear ({polygonPoints.length} points)
+                                </button>
+                            )}
+                        </div>
+                        <div className="h-[600px]">
+                            <MapContainer
+                                center={[37.7749, -122.4194]}
+                                zoom={13}
+                                style={{ height: "100%", width: "100%" }}
+                            >
+                                <TileLayer
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                />
+                                <MapClickHandler onMapClick={handleMapClick} />
+
+                                {polygonPoints.map((point, idx) => (
+                                    <Marker key={idx} position={point} />
+                                ))}
+
+                                {polygonPoints.length >= 3 && (
+                                    <Polygon
+                                        positions={polygonPoints}
+                                        pathOptions={{
+                                            color: "blue",
+                                            fillOpacity: 0.2,
+                                        }}
+                                    />
+                                )}
+                            </MapContainer>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="lg:col-span-1">
+                    <form
+                        onSubmit={handleSubmit}
+                        className="bg-card rounded-lg border shadow-sm p-6"
+                    >
+                        <h2 className="text-lg font-semibold text-card-foreground mb-4">
+                            Mission Configuration
+                        </h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Mission Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            name: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                    placeholder="e.g., Site Survey #1"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Site Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.site_name}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            site_name: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                    placeholder="e.g., Construction Site A"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Description
+                                </label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            description: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                    rows={3}
+                                    placeholder="Optional mission details"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Survey Type
+                                </label>
+                                <select
+                                    value={formData.survey_type}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            survey_type: e.target.value as any,
+                                        })
+                                    }
+                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                >
+                                    <option value="mapping">Mapping</option>
+                                    <option value="inspection">
+                                        Inspection
+                                    </option>
+                                    <option value="surveillance">
+                                        Surveillance
+                                    </option>
+                                    <option value="delivery">Delivery</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Assign Drone
+                                </label>
+                                <select
+                                    value={formData.assigned_drone_id}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            assigned_drone_id: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                >
+                                    <option value="">Select a drone</option>
+                                    {availableDrones.map((drone) => (
+                                        <option key={drone.id} value={drone.id}>
+                                            {drone.name} - {drone.battery_level}
+                                            %
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-1">
+                                        Altitude (m)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={formData.altitude}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                altitude: Number(
+                                                    e.target.value,
+                                                ),
+                                            })
+                                        }
+                                        className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                        min="10"
+                                        max="120"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-1">
+                                        Speed (m/s)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={formData.speed}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                speed: Number(e.target.value),
+                                            })
+                                        }
+                                        className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                        min="1"
+                                        max="20"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Overlap (%)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={formData.overlap}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            overlap: Number(e.target.value),
+                                        })
+                                    }
+                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
+                                    min="0"
+                                    max="90"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={
+                                    createMissionMutation.isPending ||
+                                    polygonPoints.length < 3
+                                }
+                                className="w-full py-2 px-4 bg-foreground text-background rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            >
+                                {createMissionMutation.isPending
+                                    ? "Creating..."
+                                    : "Create Mission"}
+                            </button>
+
+                            {createMissionMutation.isSuccess && (
+                                <p className="text-sm text-muted-foreground text-center">
+                                    Mission created successfully!
+                                </p>
+                            )}
+
+                            {createMissionMutation.isError && (
+                                <p className="text-sm text-muted-foreground text-center">
+                                    Error creating mission
+                                </p>
+                            )}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}

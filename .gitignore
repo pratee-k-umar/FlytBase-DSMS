@@ -54,7 +54,6 @@ dist/
 build/
 *.egg-info/
 staticfiles/
-static/
 
 # Coverage
 htmlcov/
