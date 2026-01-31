@@ -1,0 +1,28 @@
+# Django Core
+Django>=5.0
+djangorestframework>=3.14
+django-cors-headers>=4.3
+
+# MongoDB
+mongoengine>=0.28
+pymongo>=4.6
+
+# Async & Real-time
+channels>=4.0
+channels-redis>=4.2
+daphne>=4.1
+
+# Background Tasks
+celery>=5.3
+redis>=5.0
+
+# Utilities
+python-dotenv>=1.0
+requests>=2.31
+colorama>=0.4
+
+# Development
+pytest>=8.0
+pytest-django>=4.7
+black>=24.0
+flake8>=7.0
