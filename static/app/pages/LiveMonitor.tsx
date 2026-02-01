@@ -293,7 +293,7 @@ export default function LiveMonitor() {
                                                         pauseMutation.mutate(mission.mission_id);
                                                     }}
                                                     disabled={pauseMutation.isPending}
-                                                    className="flex-1 px-2 py-1 text-xs rounded bg-muted text-foreground hover:bg-muted/70 disabled:opacity-50"
+                                                    className="flex-1 px-2 py-1 text-xs rounded bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors duration-150 disabled:opacity-50"
                                                 >
                                                     Pause
                                                 </button>
@@ -305,7 +305,7 @@ export default function LiveMonitor() {
                                                         resumeMutation.mutate(mission.mission_id);
                                                     }}
                                                     disabled={resumeMutation.isPending}
-                                                    className="flex-1 px-2 py-1 text-xs rounded bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+                                                    className="flex-1 px-2 py-1 text-xs rounded bg-foreground text-background hover:bg-primary hover:scale-105 transition-all duration-150 disabled:opacity-50"
                                                 >
                                                     Resume
                                                 </button>
@@ -319,7 +319,7 @@ export default function LiveMonitor() {
                                                         }
                                                     }}
                                                     disabled={abortMutation.isPending}
-                                                    className="flex-1 px-2 py-1 text-xs rounded bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50"
+                                                    className="flex-1 px-2 py-1 text-xs rounded bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-colors duration-150 disabled:opacity-50"
                                                 >
                                                     Abort
                                                 </button>

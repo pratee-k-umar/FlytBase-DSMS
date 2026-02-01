@@ -55,6 +55,22 @@ class MissionSerializer(serializers.Serializer):
     completed_at = serializers.DateTimeField(read_only=True, allow_null=True)
 
 
+class MissionListSerializer(serializers.Serializer):
+    """Lightweight serializer for mission list - excludes heavy fields"""
+
+    mission_id = serializers.CharField(read_only=True)
+    name = serializers.CharField()
+    site_name = serializers.CharField(allow_blank=True, required=False)
+    altitude = serializers.FloatField()
+    speed = serializers.FloatField()
+    survey_type = serializers.CharField()
+    status = serializers.CharField(read_only=True)
+    progress = serializers.FloatField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    started_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    completed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+
+
 class MissionCreateSerializer(serializers.Serializer):
     """Serializer for creating a new mission"""
 

@@ -29,8 +29,8 @@ export default function Analytics() {
         null,
     );
     const { data: missionsData } = useQuery({
-        queryKey: ["missions"],
-        queryFn: () => missionService.getAll(),
+        queryKey: ["missions", "recent"],
+        queryFn: () => missionService.getAll({ limit: 10 }),
     });
 
     const { data: missionStats } = useQuery({
