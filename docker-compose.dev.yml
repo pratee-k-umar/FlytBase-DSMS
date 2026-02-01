@@ -1,0 +1,57 @@
+# Docker Compose for Development
+# Provides local MongoDB and Redis for development
+# Django and frontend run on host for faster development
+
+services:
+  # MongoDB for local development
+  mongodb:
+    image: mongo:7.0
+    container_name: dsms-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: dsms
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery and Django Channels
+  redis:
+    image: redis:7-alpine
+    container_name: dsms-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Celery Worker (optional - for background tasks)
+  celery:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: dsms-celery
+    depends_on:
+      - redis
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/dsms
+      - REDIS_URL=redis://redis:6379
+      - DJANGO_SETTINGS_MODULE=dsms.conf.settings.development
+    volumes:
+      - ./src/dsms:/app
+    command: celery -A dsms.tasks worker -l info
+    profiles:
+      - with-worker  # Only start with: docker compose --profile with-worker up
+
+volumes:
+  mongodb_data:
+  redis_data:

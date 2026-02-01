@@ -15,9 +15,11 @@ help:
 	@echo ""
 	@echo "$(GREEN)Development:$(NC)"
 	@echo "  make dev          - Run Django development server"
+	@echo "  make dev-docker   - Start local MongoDB & Redis containers"
 	@echo ""
 	@echo "$(GREEN)Testing:$(NC)"
 	@echo "  make test         - Run all tests"
+	@echo "  make test-api     - Run API endpoint tests"
 	@echo "  make lint         - Run linters"
 	@echo "  make format       - Format code"
 	@echo ""
@@ -26,8 +28,14 @@ help:
 	@echo "  make shell        - Open Django shell"
 	@echo ""
 	@echo "$(GREEN)Docker:$(NC)"
-	@echo "  make docker-up    - Start all services"
-	@echo "  make docker-down  - Stop all services"
+	@echo "  make docker-dev   - Start dev services (MongoDB, Redis)"
+	@echo "  make docker-prod  - Build and start production stack"
+	@echo "  make docker-down  - Stop all containers"
+	@echo "  make docker-logs  - View container logs"
+	@echo ""
+	@echo "$(GREEN)Build:$(NC)"
+	@echo "  make build        - Build frontend for production"
+	@echo "  make build-docker - Build Docker images"
 	@echo ""
 	@echo "$(GREEN)Cleanup:$(NC)"
 	@echo "  make clean        - Remove cache files"
@@ -41,6 +49,15 @@ setup:
 	@echo "$(GREEN)[OK] Setup complete!$(NC)"
 	@echo "Configure your .env file with MongoDB and Redis URLs"
 
+# Build (for production deployment)
+build:
+	@echo "$(CYAN)Installing dependencies...$(NC)"
+	pip install -r src/dsms/requirements.txt
+	npm install
+	@echo "$(CYAN)Building frontend...$(NC)"
+	npm run build
+	@echo "$(GREEN)[OK] Build complete!$(NC)"
+
 # Development
 dev:
 	@echo "$(CYAN)Starting DSMS Django API...$(NC)"
@@ -48,10 +65,20 @@ dev:
 	@echo "Press Ctrl+C to stop"
 	python dev.py
 
+dev-docker:
+	@echo "$(CYAN)Starting dev services (MongoDB, Redis)...$(NC)"
+	docker compose -f docker-compose.dev.yml up -d mongodb redis
+	@echo "$(GREEN)[OK] MongoDB: localhost:27017$(NC)"
+	@echo "$(GREEN)[OK] Redis: localhost:6379$(NC)"
+
 # Testing
 test:
 	@echo "$(CYAN)Running tests...$(NC)"
 	cd src/dsms && venv/Scripts/python manage.py test
+
+test-api:
+	@echo "$(CYAN)Running API tests...$(NC)"
+	python scripts/test_api.py
 
 lint:
 	@echo "$(CYAN)Running linters...$(NC)"
@@ -64,17 +91,34 @@ format:
 # Data
 seed:
 	@echo "$(CYAN)Seeding database...$(NC)"
-	cd src/dsms && venv/Scripts/python scripts/seed_data.py
+	python scripts/seed_data.py
 
 shell:
 	cd src/dsms && venv/Scripts/python manage.py shell
 
 # Docker
-docker-up:
-	docker-compose -f docker-compose.dev.yml up -d
+docker-dev:
+	@echo "$(CYAN)Starting dev services...$(NC)"
+	docker compose -f docker-compose.dev.yml up -d mongodb redis
+	@echo "$(GREEN)[OK] Services started$(NC)"
+
+docker-prod:
+	@echo "$(CYAN)Building and starting production stack...$(NC)"
+	docker compose up --build -d
+	@echo "$(GREEN)[OK] Production stack running at http://localhost:8000$(NC)"
 
 docker-down:
-	docker-compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.dev.yml down 2>/dev/null || true
+	docker compose down 2>/dev/null || true
+	@echo "$(GREEN)[OK] All containers stopped$(NC)"
+
+docker-logs:
+	docker compose logs -f
+
+build-docker:
+	@echo "$(CYAN)Building Docker images...$(NC)"
+	docker compose build
+	@echo "$(GREEN)[OK] Images built$(NC)"
 
 # Cleanup
 clean:
@@ -83,3 +127,4 @@ clean:
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@echo "$(GREEN)[OK] Cleaned!$(NC)"
+

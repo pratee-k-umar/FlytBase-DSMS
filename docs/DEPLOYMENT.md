@@ -209,32 +209,132 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE',
 
 ---
 
-## Option 2: Vercel (Frontend Only)
+## Option 2: Vercel Deployment
 
-**⚠️ Note: Vercel is designed for frontend/static sites. For this full-stack Django app, you'll need to:**
+### Can Django Run on Vercel?
 
-1. Deploy backend separately (Render/Railway/Heroku)
-2. Deploy frontend React app on Vercel
-3. Configure CORS properly
+**YES**, but with **major limitations**. Vercel is primarily designed for Next.js and static sites, but Django can run as **serverless functions**.
 
-### Not Recommended for This Project
+### ⚠️ Critical Limitations for DSMS on Vercel
 
-Vercel works best for:
+**Why Vercel is NOT Recommended for This Full-Featured Project:**
 
-- Next.js applications
-- Static sites
-- Serverless functions
+1. **❌ No WebSockets** - Vercel doesn't support persistent connections
+    - Django Channels won't work
+    - Real-time telemetry streaming impossible
+    - Must use polling only (less efficient)
 
-For a Django + React monorepo like DSMS, **Render or Railway are better choices** as they handle the full stack in one deployment.
+2. **❌ No Background Tasks** - Serverless functions are stateless
+    - Drone simulator threads won't work
+    - No Celery workers
+    - Each request is completely isolated
 
-### If You Still Want to Use Vercel for Frontend
+3. **❌ Cold Starts** - Every request can have delays
+    - Functions sleep after inactivity
+    - First request takes 1-3 seconds to wake up
+    - Poor user experience
 
-**1. Split the application:**
+4. **❌ No Persistent State** - Filesystem is read-only
+    - Can't store logs locally
+    - Can't cache data on disk
 
-- Deploy Django backend on Render/Railway
-- Deploy React frontend on Vercel separately
+5. **❌ 10-Second Timeout** - Hobby plan limit
+    - Long-running operations fail
+    - Mission simulations won't work
 
-**2. Configure frontend build:**
+### When Vercel DOES Work for Django
+
+Vercel is suitable for **simple Django REST APIs** with:
+
+- ✅ Stateless request/response only
+- ✅ No WebSockets required
+- ✅ No background tasks
+- ✅ Short execution times (<10s)
+- ✅ External database (MongoDB Atlas)
+- ✅ No real-time features
+
+### Option A: Vercel Serverless Django (Limited Features)
+
+**If you still want to try Vercel** (many features won't work):
+
+**1. Create `vercel.json` in project root:**
+
+```json
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "src/dsms/dsms/wsgi.py",
+            "use": "@vercel/python",
+            "config": { "maxLambdaSize": "15mb" }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "src/dsms/dsms/wsgi.py"
+        }
+    ],
+    "env": {
+        "DJANGO_SETTINGS_MODULE": "dsms.conf.settings.production"
+    }
+}
+```
+
+**2. Install Vercel CLI:**
+
+```bash
+npm install -g vercel
+```
+
+**3. Add secrets:**
+
+```bash
+vercel secrets add mongodb_uri "your-mongodb-connection-string"
+vercel secrets add django_secret_key "your-secret-key"
+```
+
+**4. Deploy:**
+
+```bash
+vercel --prod
+```
+
+**What Won't Work on Vercel:**
+
+- ❌ Live Monitor with real-time updates
+- ❌ WebSocket telemetry streaming
+- ❌ Background drone simulator
+- ❌ Auto-recovery features
+- ❌ Mission auto-start
+- ❌ Daphne/Channels
+
+**What Will Work:**
+
+- ✅ Mission CRUD (create, read, update, delete)
+- ✅ View completed missions
+- ✅ Analytics dashboard (historical data)
+- ✅ Fleet management (basic)
+- ✅ API endpoints
+
+### Option B: Hybrid - Backend on Render + Frontend on Vercel ⭐
+
+**Recommended if you want to use Vercel:**
+
+**1. Deploy Django backend on Render** (with full features)
+
+- WebSockets work
+- Background tasks work
+- All features functional
+- Cost: $7/month
+
+**2. Deploy React frontend on Vercel** (fast CDN delivery)
+
+- Free tier sufficient
+- Global CDN
+- Fast page loads
+
+**Frontend Setup for Vercel:**
 
 Create `vercel.json`:
 
@@ -247,21 +347,71 @@ Create `vercel.json`:
 }
 ```
 
-**3. Update API base URL:**
+Set environment variable in Vercel dashboard:
+
+```
+VITE_API_URL=https://dsms-api.onrender.com
+```
+
+Update API client:
 
 ```typescript
 // static/app/services/api.ts
-const API_BASE_URL =
-    process.env.VITE_API_URL || "https://dsms-api.onrender.com";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 ```
 
-**4. Deploy:**
+**Backend CORS settings:**
+
+```python
+# settings/production.py
+CORS_ALLOWED_ORIGINS = [
+    'https://your-app.vercel.app',
+    'https://dsms-web.onrender.com',
+]
+```
+
+**Deploy:**
 
 ```bash
+# Frontend to Vercel
 vercel --prod
+
+# Backend to Render (via GitHub push)
+git push origin main
 ```
 
-This approach is **more complex** and requires managing two separate deployments.
+**Hybrid Advantages:**
+
+- ✅ All backend features work (on Render)
+- ✅ Fast frontend delivery (Vercel CDN)
+- ✅ Separate scaling
+- ✅ Frontend on free tier
+
+**Hybrid Disadvantages:**
+
+- ⚠️ Two separate deployments to manage
+- ⚠️ CORS configuration needed
+- ⚠️ Two services instead of one
+
+### Comparison Table
+
+| Feature           | Render Only     | Vercel Only | Hybrid (Render + Vercel)    |
+| ----------------- | --------------- | ----------- | --------------------------- |
+| WebSockets        | ✅ Yes          | ❌ No       | ✅ Yes                      |
+| Background Tasks  | ✅ Yes          | ❌ No       | ✅ Yes                      |
+| Real-time Updates | ✅ Yes          | ❌ No       | ✅ Yes                      |
+| Cold Starts       | ❌ No (on paid) | ✅ Yes      | ❌ Backend no, Frontend yes |
+| Setup Complexity  | ⭐ Easy         | ⭐⭐ Medium | ⭐⭐⭐ Complex              |
+| Monthly Cost      | $7              | $0          | $7                          |
+| CDN               | Standard        | ✅ Global   | ✅ Global                   |
+
+### Final Recommendation for Vercel
+
+**Choose based on your needs:**
+
+1. **🥇 Render Only**: Best for full features, easiest setup - **$7/month**
+2. **🥈 Hybrid (Render + Vercel)**: Full features + fast frontend - **$7/month**
+3. **❌ Vercel Only**: Missing critical features, NOT recommended
 
 ---
 
