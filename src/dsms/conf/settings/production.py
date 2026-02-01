@@ -7,7 +7,10 @@ import os
 from .base import *
 
 DEBUG = False
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+
+# ALLOWED_HOSTS - include Render domains by default
+_allowed_hosts = os.getenv("ALLOWED_HOSTS", ".onrender.com,localhost")
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 
 # Security settings
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() == "true"
