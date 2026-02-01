@@ -2,6 +2,9 @@
 Django App Configuration with startup hooks
 """
 
+import os
+import sys
+
 from django.apps import AppConfig
 
 
@@ -14,6 +17,20 @@ class DsmsConfig(AppConfig):
         Called when Django is ready.
         Use this to restart any in-progress mission simulations.
         """
+        # Skip DB connection during management commands (collectstatic, migrate, etc.)
+        # This allows Docker builds to work without MongoDB
+        if len(sys.argv) > 1 and sys.argv[1] in [
+            'collectstatic', 'migrate', 'makemigrations', 
+            'check', 'shell', 'help', '--help'
+        ]:
+            print(f"[STARTUP] Skipping DB connection for management command: {sys.argv[1]}")
+            return
+
+        # Also skip if running in build environment
+        if os.getenv('DOCKER_BUILD', 'false').lower() == 'true':
+            print("[STARTUP] Skipping DB connection during Docker build")
+            return
+
         # Import here to avoid circular imports
         import threading
 
