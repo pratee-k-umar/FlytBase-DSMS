@@ -82,6 +82,7 @@ export default function LiveMonitor() {
     const [selectedMission, setSelectedMission] = useState<string | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [shouldRecenter, setShouldRecenter] = useState(false);
+    const [lastSelectedMission, setLastSelectedMission] = useState<string | null>(null);
 
     // Fetch active missions
     const { data: missionsData } = useQuery({
@@ -149,6 +150,15 @@ export default function LiveMonitor() {
             setSelectedMission(activeMissions[0].mission_id);
         }
     }, [activeMissions, selectedMission]);
+
+    // Auto-center map when a different mission is selected
+    useEffect(() => {
+        if (selectedMission && selectedMission !== lastSelectedMission) {
+            // Trigger recenter when mission changes
+            setShouldRecenter(true);
+            setLastSelectedMission(selectedMission);
+        }
+    }, [selectedMission, lastSelectedMission]);
 
     // Get waypoint positions for map
     const waypointPositions =

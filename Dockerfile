@@ -45,5 +45,12 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health/ || exit 1
 
-# Start with gunicorn (Render sets PORT)
-CMD gunicorn dsms.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4
+# Start with gunicorn (with access logs enabled)
+CMD gunicorn dsms.wsgi:application \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --workers 2 \
+    --threads 4 \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    --capture-output

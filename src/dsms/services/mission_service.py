@@ -366,17 +366,67 @@ def complete_mission(mission_id: str) -> Mission:
 
     mission.save()
 
-    # Release drone
+    # Set drone to charging (not available until fully charged)
     if mission.assigned_drone_id:
         try:
             drone = Drone.objects.get(drone_id=mission.assigned_drone_id)
-            drone.status = "available"
+            drone.status = "charging"
             drone.current_mission_id = None
             drone.save()
+            print(f"[INFO] Drone {drone.drone_id} started charging (battery: {drone.battery_level}%)")
+            
+            # Start charging task in background
+            start_drone_charging(drone.drone_id)
         except Drone.DoesNotExist:
             pass
 
     return mission
+
+
+def start_drone_charging(drone_id: str) -> None:
+    """Start background charging for a drone"""
+    import threading
+    
+    def charge_drone():
+        """Charge drone to 100% in background"""
+        import time
+        
+        CHARGE_RATE = 5.0  # % per second (fast for demo)
+        
+        while True:
+            try:
+                drone = Drone.objects.get(drone_id=drone_id)
+                
+                if drone.battery_level >= 100:
+                    # Fully charged - set to available
+                    drone.status = "available"
+                    drone.battery_level = 100.0
+                    drone.save()
+                    print(f"[INFO] Drone {drone_id} fully charged and available")
+                    break
+                    
+                if drone.status != "charging":
+                    # Drone status changed externally, stop charging
+                    print(f"[INFO] Drone {drone_id} charging interrupted (status: {drone.status})")
+                    break
+                
+                # Charge battery
+                new_level = min(100, drone.battery_level + CHARGE_RATE)
+                drone.battery_level = new_level
+                drone.save()
+                print(f"[CHARGING] Drone {drone_id}: {new_level:.1f}%")
+                
+                time.sleep(1)  # Update every second
+                
+            except Drone.DoesNotExist:
+                print(f"[WARNING] Drone {drone_id} not found during charging")
+                break
+            except Exception as e:
+                print(f"[ERROR] Charging error for {drone_id}: {e}")
+                break
+    
+    thread = threading.Thread(target=charge_drone, daemon=True)
+    thread.start()
 
 
 def generate_flight_path(mission_id: str) -> Mission:

@@ -21,7 +21,7 @@ class DroneSimulator:
     """
 
     # Simulation constants
-    BATTERY_DRAIN_RATE = 0.5  # % per minute
+    BATTERY_DRAIN_RATE = 2.0  # % per minute (faster drain for demo)
     DEFAULT_SPEED = 5.0  # m/s
     WAYPOINT_THRESHOLD = 2.0  # meters to consider "reached"
 
