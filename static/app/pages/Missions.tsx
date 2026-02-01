@@ -9,15 +9,15 @@ export default function Missions() {
         null,
     );
 
-    const { data: missionsData, isLoading } = useQuery({
+    const { data: missionsData, isLoading, refetch } = useQuery({
         queryKey: ["missions", selectedStatus],
         queryFn: () => {
             if (selectedStatus === "all") {
-                return missionService.getAll();
+                return missionService.getAll({ limit: 50 });
             }
-            return missionService.getAll({ status: selectedStatus });
+            return missionService.getAll({ status: selectedStatus, limit: 50 });
         },
-        refetchInterval: 2000,
+        refetchInterval: 5000, // Slower refresh to reduce load
     });
 
     const startMissionMutation = useMutation({
@@ -101,7 +101,7 @@ export default function Missions() {
                     </p>
                 </div>
                 <button
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ["missions"] })}
+                    onClick={() => refetch()}
                     className="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/70 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

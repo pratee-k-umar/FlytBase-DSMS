@@ -140,9 +140,14 @@ export default function LiveMonitor() {
     });
 
     const activeMissions = missionsData?.data || [];
-    const currentMission = selectedMission
-        ? activeMissions.find((m) => m.mission_id === selectedMission)
-        : undefined;
+    
+    // Fetch full mission details for selected mission (includes coverage_area and flight_path)
+    const { data: currentMission } = useQuery({
+        queryKey: ["mission", selectedMission],
+        queryFn: () => selectedMission ? missionService.getById(selectedMission) : null,
+        enabled: !!selectedMission,
+        refetchInterval: autoRefresh ? 3000 : false,
+    });
 
     // Auto-select first mission if none selected
     useEffect(() => {
