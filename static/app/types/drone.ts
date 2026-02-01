@@ -1,5 +1,6 @@
 export interface Drone {
     id: string;
+    drone_id: string;
     name: string;
     model: string;
     status: "available" | "in_mission" | "maintenance" | "offline";

@@ -252,13 +252,8 @@ export default function LiveMonitor() {
                             </h2>
                             <div className="space-y-2">
                                 {activeMissions.map((mission) => (
-                                    <button
+                                    <div
                                         key={mission.mission_id}
-                                        onClick={() =>
-                                            setSelectedMission(
-                                                mission.mission_id,
-                                            )
-                                        }
                                         className={`w-full text-left p-3 rounded border transition-colors ${
                                             selectedMission ===
                                             mission.mission_id
@@ -266,21 +261,71 @@ export default function LiveMonitor() {
                                                 : "bg-background border-border hover:border-foreground"
                                         }`}
                                     >
-                                        <div className="font-medium text-foreground text-sm">
-                                            {mission.name}
+                                        <button
+                                            onClick={() =>
+                                                setSelectedMission(
+                                                    mission.mission_id,
+                                                )
+                                            }
+                                            className="w-full text-left"
+                                        >
+                                            <div className="font-medium text-foreground text-sm">
+                                                {mission.name}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-1">
+                                                {mission.site_name}
+                                            </div>
+                                            <div className="mt-2 flex items-center justify-between">
+                                                <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                                                    {mission.status}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {Math.round(mission.progress)}%
+                                                </span>
+                                            </div>
+                                        </button>
+                                        {/* Quick action buttons */}
+                                        <div className="mt-2 flex gap-2">
+                                            {mission.status === "in_progress" && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        pauseMutation.mutate(mission.mission_id);
+                                                    }}
+                                                    disabled={pauseMutation.isPending}
+                                                    className="flex-1 px-2 py-1 text-xs rounded bg-muted text-foreground hover:bg-muted/70 disabled:opacity-50"
+                                                >
+                                                    Pause
+                                                </button>
+                                            )}
+                                            {mission.status === "paused" && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        resumeMutation.mutate(mission.mission_id);
+                                                    }}
+                                                    disabled={resumeMutation.isPending}
+                                                    className="flex-1 px-2 py-1 text-xs rounded bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+                                                >
+                                                    Resume
+                                                </button>
+                                            )}
+                                            {(mission.status === "in_progress" || mission.status === "paused") && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm("Abort this mission?")) {
+                                                            abortMutation.mutate(mission.mission_id);
+                                                        }
+                                                    }}
+                                                    disabled={abortMutation.isPending}
+                                                    className="flex-1 px-2 py-1 text-xs rounded bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50"
+                                                >
+                                                    Abort
+                                                </button>
+                                            )}
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                            {mission.site_name}
-                                        </div>
-                                        <div className="mt-2 flex items-center justify-between">
-                                            <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                                                {mission.status}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {Math.round(mission.progress)}%
-                                            </span>
-                                        </div>
-                                    </button>
+                                    </div>
                                 ))}
                             </div>
                         </div>

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LatLng } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     MapContainer,
     Marker,
@@ -40,6 +41,7 @@ function MapClickHandler({
 
 export default function MissionPlanner() {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [polygonPoints, setPolygonPoints] = useState<LatLng[]>([]);
     const [formData, setFormData] = useState({
         name: "",
@@ -72,6 +74,8 @@ export default function MissionPlanner() {
                 overlap: 70,
                 assigned_drone_id: "",
             });
+            // Redirect to missions page after successful creation
+            navigate("/missions");
         },
     });
 
@@ -279,7 +283,7 @@ export default function MissionPlanner() {
                                 >
                                     <option value="">Select a drone</option>
                                     {availableDrones.map((drone) => (
-                                        <option key={drone.id} value={drone.id}>
+                                        <option key={drone.drone_id} value={drone.drone_id}>
                                             {drone.name} - {drone.battery_level}
                                             %
                                         </option>

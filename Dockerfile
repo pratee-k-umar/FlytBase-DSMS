@@ -53,4 +53,5 @@ CMD gunicorn dsms.wsgi:application \
     --access-logfile - \
     --error-logfile - \
     --log-level info \
-    --capture-output
+    --capture-output \
+    --access-logformat '"%(m)s %(U)s%(q)s" %(s)s %(b)s %(L)ss'
