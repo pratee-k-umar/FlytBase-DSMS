@@ -28,9 +28,13 @@ export default function Analytics() {
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(
     null,
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const ITEMS_PER_PAGE = 10;
+
   const { data: missionsData, isLoading: missionsLoading } = useQuery({
-    queryKey: ["missions", "recent"],
-    queryFn: () => missionService.getAll({ limit: 10 }),
+    queryKey: ["missions", "analytics"],
+    queryFn: () => missionService.getAll({ limit: 100 }), // Fetch more for pagination
   });
 
   const { data: missionStats, isLoading: statsLoading } = useQuery({
@@ -47,7 +51,6 @@ export default function Analytics() {
   const isLoading = missionsLoading || statsLoading || fleetLoading;
 
   const missions = missionsData?.data || [];
-  const completedMissions = missions.filter((m) => m.status === "completed");
 
   // Fetch selected mission details
   const { data: selectedMissionData } = useQuery({
@@ -70,30 +73,11 @@ export default function Analytics() {
   const selectedMission = selectedMissionData;
   const telemetryPoints = telemetryData?.data || [];
 
-  // Calculate statistics
-  const totalFlightTime = completedMissions.reduce((acc: number, m) => {
-    if (m.started_at && m.completed_at) {
-      const start = new Date(m.started_at).getTime();
-      const end = new Date(m.completed_at).getTime();
-      return acc + (end - start) / (1000 * 60); // minutes
-    }
-    return acc;
-  }, 0);
-
-  const avgFlightTime =
-    completedMissions.length > 0
-      ? totalFlightTime / completedMissions.length
-      : 0;
-
-  const totalAreaCovered = completedMissions.reduce(
-    (acc: number, m) => acc + (m.area_covered || 0),
-    0,
-  );
-
-  const totalImages = completedMissions.reduce(
-    (acc: number, m) => acc + (m.images_captured || 0),
-    0,
-  );
+  // Use stats from API (includes data from ALL missions, not just limited list)
+  const totalFlightTime = missionStats?.total_flight_time || 0;
+  const avgFlightTime = missionStats?.avg_flight_time || 0;
+  const totalAreaCovered = missionStats?.total_area_covered || 0;
+  const totalImages = missionStats?.total_images_captured || 0;
 
   const overviewStats = [
     { label: "Total Missions", value: missionStats?.total || 0 },
@@ -255,10 +239,36 @@ export default function Analytics() {
 
         {/* Recent Missions */}
         <div className="bg-card rounded-lg border shadow-sm">
-          <div className="px-6 py-4 border-b">
+          <div className="px-6 py-4 border-b flex items-center justify-between gap-4 flex-wrap">
             <h2 className="text-xl font-semibold text-card-foreground">
-              Recent Missions
+              All Missions
             </h2>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search missions..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1); // Reset to first page on search
+                }}
+                className="pl-10 pr-4 py-2 border rounded-md bg-background text-foreground text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
           </div>
           <div className="p-6">
             {missions.length === 0 ? (
@@ -268,69 +278,125 @@ export default function Analytics() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Mission
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Site
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Type
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Status
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Progress
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Created
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {missions.slice(0, 10).map((mission: any) => (
-                      <tr key={mission.mission_id} className="border-b">
-                        <td className="py-3 px-4 text-sm font-medium text-foreground">
-                          {mission.name}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {mission.site_name}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {mission.survey_type}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                            {mission.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {Math.round(mission.progress)}%
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {new Date(mission.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={() =>
-                              setSelectedMissionId(mission.mission_id)
-                            }
-                            className="text-xs px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-                          >
-                            View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {(() => {
+                  // Filter missions by search query
+                  const filteredMissions = missions.filter((mission: any) =>
+                    mission.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    mission.site_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    mission.status.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+                  
+                  // Pagination
+                  const totalPages = Math.ceil(filteredMissions.length / ITEMS_PER_PAGE);
+                  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                  const paginatedMissions = filteredMissions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+                  
+                  return (
+                    <>
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Mission
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Site
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Type
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Status
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Progress
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Created
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedMissions.map((mission: any) => (
+                            <tr key={mission.mission_id} className="border-b hover:bg-muted/50 transition-colors">
+                              <td className="py-3 px-4 text-sm font-medium text-foreground">
+                                {mission.name}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-muted-foreground">
+                                {mission.site_name}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-muted-foreground">
+                                {mission.survey_type}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                                  {mission.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-muted-foreground">
+                                {Math.round(mission.progress)}%
+                              </td>
+                              <td className="py-3 px-4 text-sm text-muted-foreground">
+                                {new Date(mission.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="py-3 px-4">
+                                <button
+                                  onClick={() =>
+                                    setSelectedMissionId(mission.mission_id)
+                                  }
+                                  className="text-xs px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t">
+                          <p className="text-sm text-muted-foreground">
+                            Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredMissions.length)} of {filteredMissions.length} missions
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                              disabled={currentPage === 1}
+                              className="p-2 rounded border bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <span className="text-sm font-medium px-3">
+                              Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                              disabled={currentPage === totalPages}
+                              className="p-2 rounded border bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {filteredMissions.length === 0 && searchQuery && (
+                        <p className="text-center text-muted-foreground py-8">
+                          No missions found matching "{searchQuery}"
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>

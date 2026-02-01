@@ -66,6 +66,8 @@ class MissionListSerializer(serializers.Serializer):
     survey_type = serializers.CharField()
     status = serializers.CharField(read_only=True)
     progress = serializers.FloatField(read_only=True)
+    area_covered = serializers.FloatField(read_only=True, required=False)
+    images_captured = serializers.IntegerField(read_only=True, required=False)
     created_at = serializers.DateTimeField(read_only=True)
     started_at = serializers.DateTimeField(read_only=True, allow_null=True)
     completed_at = serializers.DateTimeField(read_only=True, allow_null=True)

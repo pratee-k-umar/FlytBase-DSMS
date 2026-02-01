@@ -111,7 +111,7 @@ def generate_crosshatch_path(
 ) -> List[Waypoint]:
     """
     Generate a crosshatch (lawn mower) pattern for full coverage.
-    This creates parallel lines across the survey area, clipped to polygon boundaries.
+    Creates clean parallel lines with only start/end points per line.
     """
     if not survey_area or "coordinates" not in survey_area:
         return []
@@ -125,73 +125,54 @@ def generate_crosshatch_path(
     min_lat, max_lat = min(lats), max(lats)
 
     # Calculate line spacing based on overlap
-    # Approximate: 1 degree ≈ 111km at equator
-    # For a camera with ~50m swath at 50m altitude, adjust accordingly
+    # For a camera with ~50m swath at 50m altitude
     swath_width = altitude * 0.8  # Approximate ground coverage in meters
     spacing_meters = swath_width * (1 - overlap / 100)
+    # Minimum spacing to avoid too many lines
+    spacing_meters = max(spacing_meters, 10)  
     spacing_degrees = spacing_meters / 111000  # Convert to degrees
 
     waypoints = []
     current_lat = min_lat
     direction = 1  # 1 = left to right, -1 = right to left
+    line_count = 0
+    max_lines = 50  # Limit number of lines to prevent excessive waypoints
 
-    while current_lat <= max_lat:
-        # Generate points along this latitude line
-        line_points = []
-        num_points = 20  # Sample points along the line
-
-        for i in range(num_points + 1):
-            lng = min_lng + (max_lng - min_lng) * i / num_points
-            if point_in_polygon(lng, current_lat, coords):
-                line_points.append((lng, current_lat))
-
-        # Group consecutive points into segments
-        if line_points:
-            segments = []
-            current_segment = [line_points[0]]
-
-            for i in range(1, len(line_points)):
-                # If points are close together, they're part of same segment
-                if (
-                    abs(line_points[i][0] - line_points[i - 1][0])
-                    < (max_lng - min_lng) / num_points * 1.5
-                ):
-                    current_segment.append(line_points[i])
-                else:
-                    if len(current_segment) > 1:
-                        segments.append(current_segment)
-                    current_segment = [line_points[i]]
-
-            if len(current_segment) > 1:
-                segments.append(current_segment)
-
-            # Add waypoints for each segment
-            for segment in segments:
-                if direction == 1:
-                    # Left to right
-                    for point in segment:
-                        waypoints.append(
-                            Waypoint(
-                                lng=point[0],
-                                lat=point[1],
-                                alt=altitude,
-                                action="photo",
-                            )
-                        )
-                else:
-                    # Right to left
-                    for point in reversed(segment):
-                        waypoints.append(
-                            Waypoint(
-                                lng=point[0],
-                                lat=point[1],
-                                alt=altitude,
-                                action="photo",
-                            )
-                        )
+    while current_lat <= max_lat and line_count < max_lines:
+        # Find intersection points with polygon at this latitude
+        intersections = []
+        
+        for i in range(len(coords) - 1):
+            x1, y1 = coords[i][0], coords[i][1]
+            x2, y2 = coords[i + 1][0], coords[i + 1][1]
+            
+            # Check if this edge crosses our latitude line
+            if (y1 <= current_lat <= y2) or (y2 <= current_lat <= y1):
+                if y1 != y2:  # Avoid division by zero
+                    # Calculate x intersection
+                    x_intersect = x1 + (current_lat - y1) * (x2 - x1) / (y2 - y1)
+                    intersections.append(x_intersect)
+        
+        # Sort intersections and pair them (entry/exit points)
+        intersections.sort()
+        
+        # Create waypoints for each pair of intersections (inside polygon segments)
+        for i in range(0, len(intersections) - 1, 2):
+            start_lng = intersections[i]
+            end_lng = intersections[i + 1] if i + 1 < len(intersections) else intersections[i]
+            
+            if direction == 1:
+                # Left to right
+                waypoints.append(Waypoint(lng=start_lng, lat=current_lat, alt=altitude, action="fly"))
+                waypoints.append(Waypoint(lng=end_lng, lat=current_lat, alt=altitude, action="photo"))
+            else:
+                # Right to left
+                waypoints.append(Waypoint(lng=end_lng, lat=current_lat, alt=altitude, action="fly"))
+                waypoints.append(Waypoint(lng=start_lng, lat=current_lat, alt=altitude, action="photo"))
 
         current_lat += spacing_degrees
-        direction *= -1  # Alternate direction
+        direction *= -1  # Alternate direction for lawn mower pattern
+        line_count += 1
 
     return waypoints
 

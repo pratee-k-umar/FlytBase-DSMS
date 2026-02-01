@@ -85,4 +85,9 @@ export interface MissionStats {
     completed: number;
     aborted: number;
     failed: number;
+    // Aggregate metrics
+    total_area_covered?: number;
+    total_images_captured?: number;
+    total_flight_time?: number;
+    avg_flight_time?: number;
 }

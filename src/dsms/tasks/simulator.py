@@ -338,3 +338,111 @@ def run_mission_simulation_sync(mission_id: str):
                     pass
         except Exception:
             pass
+
+
+@shared_task(bind=True)
+def charge_drone_task(self, drone_id: str):
+    """
+    Celery task to charge a drone to 100%.
+    This runs in the Celery worker, ensuring it persists even if the web request ends.
+    """
+    from dsms.models import Drone
+    
+    CHARGE_RATE = 5.0  # % per second (fast for demo)
+    MAX_CHARGE_TIME = 30  # Max 30 seconds to fully charge
+    
+    print(f"[CHARGING] Starting charge task for drone {drone_id}")
+    
+    for tick in range(MAX_CHARGE_TIME):
+        try:
+            drone = Drone.objects.get(drone_id=drone_id)
+            
+            if drone.battery_level >= 100:
+                # Fully charged - set to available
+                drone.status = "available"
+                drone.battery_level = 100.0
+                drone.save()
+                print(f"[CHARGING] Drone {drone_id} fully charged and available")
+                return {"status": "complete", "battery": 100}
+                
+            if drone.status != "charging":
+                # Drone status changed externally, stop charging
+                print(f"[CHARGING] Drone {drone_id} interrupted (status: {drone.status})")
+                return {"status": "interrupted", "reason": drone.status}
+            
+            # Charge battery
+            new_level = min(100, drone.battery_level + CHARGE_RATE)
+            drone.battery_level = new_level
+            drone.save()
+            print(f"[CHARGING] Drone {drone_id}: {new_level:.1f}%")
+            
+            time.sleep(1)  # Update every second
+            
+        except Drone.DoesNotExist:
+            print(f"[CHARGING] Drone {drone_id} not found")
+            return {"status": "error", "reason": "drone_not_found"}
+        except Exception as e:
+            print(f"[CHARGING] Error for {drone_id}: {e}")
+            return {"status": "error", "reason": str(e)}
+    
+    # If we get here, set to available anyway
+    try:
+        drone = Drone.objects.get(drone_id=drone_id)
+        drone.status = "available"
+        drone.battery_level = 100.0
+        drone.save()
+    except Exception:
+        pass
+    
+    return {"status": "complete", "battery": 100}
+
+
+def charge_drone_sync(drone_id: str):
+    """
+    Synchronous version of drone charging (for when Celery is not available).
+    Runs in a background thread but charges quickly.
+    """
+    import threading
+    from dsms.models import Drone
+    
+    def do_charge():
+        CHARGE_RATE = 10.0  # % per second (very fast for sync mode)
+        MAX_ITERATIONS = 15
+        
+        for _ in range(MAX_ITERATIONS):
+            try:
+                drone = Drone.objects.get(drone_id=drone_id)
+                
+                if drone.battery_level >= 100:
+                    drone.status = "available"
+                    drone.battery_level = 100.0
+                    drone.save()
+                    print(f"[SYNC CHARGING] Drone {drone_id} fully charged")
+                    return
+                    
+                if drone.status != "charging":
+                    print(f"[SYNC CHARGING] Drone {drone_id} interrupted")
+                    return
+                
+                new_level = min(100, drone.battery_level + CHARGE_RATE)
+                drone.battery_level = new_level
+                drone.save()
+                print(f"[SYNC CHARGING] Drone {drone_id}: {new_level:.1f}%")
+                
+                time.sleep(1)
+                
+            except Exception as e:
+                print(f"[SYNC CHARGING] Error: {e}")
+                return
+        
+        # Force complete after max iterations
+        try:
+            drone = Drone.objects.get(drone_id=drone_id)
+            drone.status = "available"
+            drone.battery_level = 100.0
+            drone.save()
+        except Exception:
+            pass
+    
+    thread = threading.Thread(target=do_charge, daemon=True)
+    thread.start()
