@@ -49,7 +49,6 @@ def serve_frontend(request):
 urlpatterns = [
     path("api/", include("dsms.api.urls")),
     path("health/", health_check, name="health-check"),
-    path("", serve_frontend, name="frontend"),
 ]
 
 # Serve static files from dist folder (Webpack build output)
@@ -63,3 +62,9 @@ if os.path.exists(DIST_DIR):
 # Serve static files in production
 if not settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Catch-all: serve frontend for any other route (SPA routing)
+# This MUST be last so it doesn't override API routes
+urlpatterns += [
+    re_path(r'^.*$', serve_frontend, name="frontend-catchall"),
+]
