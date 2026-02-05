@@ -8,6 +8,7 @@ from dsms.services import fleet_service
 from dsms.services import analytics_service
 from dsms.services import path_generator
 from dsms.services import telemetry_service
+from dsms.services import base_service
 
 __all__ = [
     'mission_service',
@@ -15,4 +16,5 @@ __all__ = [
     'analytics_service',
     'path_generator',
     'telemetry_service',
+    'base_service',
 ]

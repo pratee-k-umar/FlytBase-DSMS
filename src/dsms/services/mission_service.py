@@ -53,6 +53,91 @@ def calculate_polygon_area(coordinates: List[List[float]]) -> float:
     return area
 
 
+def get_mission_center(mission: Mission) -> tuple:
+    """Get the center point of a mission's coverage area"""
+    if not mission.coverage_area or "coordinates" not in mission.coverage_area:
+        return None, None
+    
+    coords = mission.coverage_area["coordinates"][0]
+    if not coords:
+        return None, None
+    
+    # Calculate centroid
+    lngs = [c[0] for c in coords]
+    lats = [c[1] for c in coords]
+    center_lng = sum(lngs) / len(lngs)
+    center_lat = sum(lats) / len(lats)
+    
+    return center_lat, center_lng
+
+
+def auto_assign_drone(mission: Mission) -> Drone:
+    """
+    Automatically assign the best available drone to a mission.
+    
+    Algorithm:
+    1. Find the nearest active base to the mission's coverage area
+    2. Get available drones at that base
+    3. Select the drone with the highest battery level
+    4. Assign drone to mission
+    
+    Returns:
+        Drone: The assigned drone
+        
+    Raises:
+        ValidationError: If no drone is available
+    """
+    from dsms.services import base_service
+    
+    # Get mission center point
+    center_lat, center_lng = get_mission_center(mission)
+    
+    if center_lat is None:
+        # No coverage area - try to find any available drone
+        available_drones = list(
+            Drone.objects(status="available").order_by("-battery_level")
+        )
+        if not available_drones:
+            raise ValidationError("No available drones in the fleet")
+        
+        best_drone = available_drones[0]
+        print(f"[AUTO-ASSIGN] No coverage area, assigned {best_drone.drone_id} (battery: {best_drone.battery_level}%)")
+        return best_drone
+    
+    # Find nearest base
+    nearest_base = base_service.find_nearest_base(center_lat, center_lng)
+    
+    if nearest_base:
+        # Get available drones at nearest base, sorted by battery (highest first)
+        base_drones = list(
+            Drone.objects(
+                base_id=nearest_base.base_id,
+                status="available"
+            ).order_by("-battery_level")
+        )
+        
+        if base_drones:
+            best_drone = base_drones[0]
+            print(f"[AUTO-ASSIGN] Found drone {best_drone.drone_id} at base {nearest_base.name} (battery: {best_drone.battery_level}%)")
+            return best_drone
+        else:
+            print(f"[AUTO-ASSIGN] No available drones at nearest base {nearest_base.name}")
+    
+    # Fallback: Find any available drone sorted by battery
+    all_available = list(
+        Drone.objects(status="available").order_by("-battery_level")
+    )
+    
+    if not all_available:
+        raise ValidationError(
+            "No available drones. All drones are either in flight, charging, or in maintenance."
+        )
+    
+    best_drone = all_available[0]
+    print(f"[AUTO-ASSIGN] Fallback: assigned {best_drone.drone_id} (battery: {best_drone.battery_level}%)")
+    return best_drone
+
+
 def get_mission(mission_id: str) -> Mission:
     """Get a mission by ID"""
     try:
@@ -224,14 +309,33 @@ def delete_mission(mission_id: str) -> None:
 
 
 def start_mission(mission_id: str) -> Mission:
-    """Start a mission execution"""
+    """Start a mission execution with automatic drone assignment"""
     mission = get_mission(mission_id)
 
     if mission.status not in ["draft", "scheduled"]:
         raise MissionError(f"Cannot start mission with status '{mission.status}'")
 
+    # Auto-assign drone if not already assigned
     if not mission.assigned_drone_id:
-        raise ValidationError("Mission has no drone assigned")
+        print(f"[START_MISSION] No drone assigned, auto-assigning...")
+        drone = auto_assign_drone(mission)
+        mission.assigned_drone_id = drone.drone_id
+        mission.save()
+        print(f"[START_MISSION] Auto-assigned drone {drone.drone_id}")
+    else:
+        # Verify assigned drone exists and is available
+        try:
+            drone = Drone.objects.get(drone_id=mission.assigned_drone_id)
+        except Drone.DoesNotExist:
+            raise ValidationError(f"Assigned drone '{mission.assigned_drone_id}' not found")
+        
+        if drone.status != "available":
+            # Try to auto-assign a different drone
+            print(f"[START_MISSION] Assigned drone not available, reassigning...")
+            drone = auto_assign_drone(mission)
+            mission.assigned_drone_id = drone.drone_id
+            mission.save()
+            print(f"[START_MISSION] Reassigned to drone {drone.drone_id}")
 
     # Auto-generate flight path if missing
     if not mission.flight_path or not mission.flight_path.waypoints:
@@ -245,16 +349,98 @@ def start_mission(mission_id: str) -> Mission:
                 "Mission has no coverage area and no flight path defined"
             )
 
-    # Get and check drone availability
-    try:
-        drone = Drone.objects.get(drone_id=mission.assigned_drone_id)
-    except Drone.DoesNotExist:
-        raise ValidationError(f"Assigned drone '{mission.assigned_drone_id}' not found")
+    # Get the drone again (in case it was auto-assigned)
+    drone = Drone.objects.get(drone_id=mission.assigned_drone_id)
 
     if drone.status != "available":
         raise MissionError(
             f"Drone '{drone.drone_id}' is not available (status: {drone.status})"
         )
+
+    # Store origin base for handoff
+    mission.origin_base_id = drone.base_id
+    
+    # Generate travel path from base to mission start
+    if drone.base_id and mission.flight_path and mission.flight_path.waypoints:
+        from dsms.services import base_service
+        from dsms.utils.geo import normalize_longitude
+        try:
+            base = base_service.get_base(drone.base_id)
+            first_waypoint = mission.flight_path.waypoints[0]
+            
+            # Normalize waypoint longitude to handle Leaflet map wrapping
+            # (e.g., -282 degrees should be normalized to 77 degrees)
+            normalized_end_lng = normalize_longitude(first_waypoint.lng)
+            
+            # Generate travel waypoints from base to first survey waypoint
+            travel_waypoints = path_generator.generate_travel_path(
+                start_lat=base.lat,
+                start_lng=base.lng,
+                end_lat=first_waypoint.lat,
+                end_lng=normalized_end_lng,
+                altitude=mission.altitude
+            )
+            
+            # Normalize ALL existing waypoints to fix any with invalid coordinates
+            # This handles missions created before the normalization fix
+            normalized_existing_waypoints = []
+            for wp in mission.flight_path.waypoints:
+                normalized_lng = normalize_longitude(wp.lng)
+                from dsms.models import Waypoint as WaypointModel
+                normalized_wp = WaypointModel(
+                    lat=wp.lat,
+                    lng=normalized_lng,
+                    alt=wp.alt,
+                    action=wp.action,
+                    duration=wp.duration
+                )
+                normalized_existing_waypoints.append(normalized_wp)
+            
+            # Prepend travel waypoints to the normalized mission path
+            if travel_waypoints:
+                all_waypoints = travel_waypoints + normalized_existing_waypoints
+                mission.flight_path.waypoints = all_waypoints
+                
+                # Recalculate total distance
+                mission.flight_path.total_distance = path_generator.calculate_path_distance(all_waypoints)
+                mission.flight_path.estimated_duration = int(
+                    mission.flight_path.total_distance / mission.speed
+                ) if mission.speed > 0 else 0
+                
+                print(f"[START_MISSION] Added {len(travel_waypoints)} travel waypoints from base {base.name}")
+            
+            # Generate return path from last survey waypoint back to base
+            if mission.flight_path and mission.flight_path.waypoints:
+                last_waypoint = mission.flight_path.waypoints[-1]
+                normalized_start_lng = normalize_longitude(last_waypoint.lng)
+                
+                # Generate return waypoints from last survey waypoint to base
+                return_waypoints = path_generator.generate_travel_path(
+                    start_lat=last_waypoint.lat,
+                    start_lng=normalized_start_lng,
+                    end_lat=base.lat,
+                    end_lng=base.lng,
+                    altitude=mission.altitude,
+                    action="fly"  # Use valid action type
+                )
+                
+                if return_waypoints:
+                    # Append return waypoints to the mission path
+                    mission.flight_path.waypoints = list(mission.flight_path.waypoints) + return_waypoints
+                    
+                    # Recalculate total distance including return path
+                    mission.flight_path.total_distance = path_generator.calculate_path_distance(
+                        mission.flight_path.waypoints
+                    )
+                    mission.flight_path.estimated_duration = int(
+                        mission.flight_path.total_distance / mission.speed
+                    ) if mission.speed > 0 else 0
+                    
+                    print(f"[START_MISSION] Added {len(return_waypoints)} return waypoints to base {base.name}")
+                    
+        except Exception as e:
+            print(f"[START_MISSION] Could not add travel/return path: {e}")
+            # Continue without travel path - not critical
 
     # Update drone status
     drone.status = "in_flight"
@@ -263,10 +449,35 @@ def start_mission(mission_id: str) -> Mission:
 
     # Update mission status
     mission.status = "in_progress"
+    mission.mission_phase = "traveling"  # Start in traveling phase
     mission.started_at = datetime.utcnow()
     mission.progress = 0.0
     mission.current_waypoint_index = 0
     mission.save()
+
+    # Log mission start (initial drone assignment)
+    try:
+        from dsms.models import log_handoff
+        from dsms.services import base_service
+        
+        base = None
+        if mission.origin_base_id:
+            try:
+                base = base_service.get_base(mission.origin_base_id)
+            except Exception:
+                pass
+        
+        log_handoff(
+            mission=mission,
+            handoff_type="start",
+            incoming_drone=drone,
+            base=base,
+            waypoint_index=0,
+            reason="Mission started"
+        )
+        print(f"[START_MISSION] Logged initial drone assignment for {mission.mission_id}")
+    except Exception as e:
+        print(f"[START_MISSION] Could not log start event: {e}")
 
     # Start simulation - try async first, fallback to thread
     try:

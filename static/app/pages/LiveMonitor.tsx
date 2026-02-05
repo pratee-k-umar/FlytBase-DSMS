@@ -1,4 +1,5 @@
 import { missionService } from "@/services/missionService";
+import { normalizeLongitude } from "@/utils/geo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -82,7 +83,9 @@ export default function LiveMonitor() {
     const [selectedMission, setSelectedMission] = useState<string | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [shouldRecenter, setShouldRecenter] = useState(false);
-    const [lastSelectedMission, setLastSelectedMission] = useState<string | null>(null);
+    const [lastSelectedMission, setLastSelectedMission] = useState<
+        string | null
+    >(null);
 
     // Fetch active missions
     const { data: missionsData } = useQuery({
@@ -140,11 +143,12 @@ export default function LiveMonitor() {
     });
 
     const activeMissions = missionsData?.data || [];
-    
+
     // Fetch full mission details for selected mission (includes coverage_area and flight_path)
     const { data: currentMission } = useQuery({
         queryKey: ["mission", selectedMission],
-        queryFn: () => selectedMission ? missionService.getById(selectedMission) : null,
+        queryFn: () =>
+            selectedMission ? missionService.getById(selectedMission) : null,
         enabled: !!selectedMission,
         refetchInterval: autoRefresh ? 3000 : false,
     });
@@ -165,20 +169,26 @@ export default function LiveMonitor() {
         }
     }, [selectedMission, lastSelectedMission]);
 
-    // Get waypoint positions for map
+    // Get waypoint positions for map - normalize and extract survey-only waypoints
     const waypointPositions =
         currentMission?.flight_path?.waypoints?.map(
-            (wp: any) => [wp.lat, wp.lng] as [number, number],
+            (wp: any) =>
+                [wp.lat, normalizeLongitude(wp.lng)] as [number, number],
         ) || [];
 
-    // Extract coverage area polygon - handle GeoJSON format
+    // Extract coverage area polygon - handle GeoJSON format and normalize coordinates
     let coveragePolygon: [number, number][] = [];
     if (currentMission?.coverage_area) {
         const coords = currentMission.coverage_area.coordinates?.[0];
         if (coords && Array.isArray(coords)) {
             // GeoJSON format: [lng, lat] -> Leaflet format: [lat, lng]
+            // Also normalize longitude to fix values like -282 -> 77
             coveragePolygon = coords.map(
-                (coord: number[]) => [coord[1], coord[0]] as [number, number],
+                (coord: number[]) =>
+                    [coord[1], normalizeLongitude(coord[0])] as [
+                        number,
+                        number,
+                    ],
             );
         }
         console.log("Coverage polygon points:", coveragePolygon);
@@ -285,19 +295,27 @@ export default function LiveMonitor() {
                                                     {mission.status}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">
-                                                    {Math.round(mission.progress)}%
+                                                    {Math.round(
+                                                        mission.progress,
+                                                    )}
+                                                    %
                                                 </span>
                                             </div>
                                         </button>
                                         {/* Quick action buttons */}
                                         <div className="mt-2 flex gap-2">
-                                            {mission.status === "in_progress" && (
+                                            {mission.status ===
+                                                "in_progress" && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        pauseMutation.mutate(mission.mission_id);
+                                                        pauseMutation.mutate(
+                                                            mission.mission_id,
+                                                        );
                                                     }}
-                                                    disabled={pauseMutation.isPending}
+                                                    disabled={
+                                                        pauseMutation.isPending
+                                                    }
                                                     className="flex-1 px-2 py-1 text-xs rounded bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors duration-150 disabled:opacity-50"
                                                 >
                                                     Pause
@@ -307,23 +325,38 @@ export default function LiveMonitor() {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        resumeMutation.mutate(mission.mission_id);
+                                                        resumeMutation.mutate(
+                                                            mission.mission_id,
+                                                        );
                                                     }}
-                                                    disabled={resumeMutation.isPending}
+                                                    disabled={
+                                                        resumeMutation.isPending
+                                                    }
                                                     className="flex-1 px-2 py-1 text-xs rounded bg-foreground text-background hover:bg-primary hover:scale-105 transition-all duration-150 disabled:opacity-50"
                                                 >
                                                     Resume
                                                 </button>
                                             )}
-                                            {(mission.status === "in_progress" || mission.status === "paused") && (
+                                            {(mission.status ===
+                                                "in_progress" ||
+                                                mission.status ===
+                                                    "paused") && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        if (confirm("Abort this mission?")) {
-                                                            abortMutation.mutate(mission.mission_id);
+                                                        if (
+                                                            confirm(
+                                                                "Abort this mission?",
+                                                            )
+                                                        ) {
+                                                            abortMutation.mutate(
+                                                                mission.mission_id,
+                                                            );
                                                         }
                                                     }}
-                                                    disabled={abortMutation.isPending}
+                                                    disabled={
+                                                        abortMutation.isPending
+                                                    }
                                                     className="flex-1 px-2 py-1 text-xs rounded bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-colors duration-150 disabled:opacity-50"
                                                 >
                                                     Abort
@@ -362,7 +395,7 @@ export default function LiveMonitor() {
                                         }
                                     />
                                     <TileLayer
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                                         attribution="&copy; OpenStreetMap"
                                     />
 
@@ -575,6 +608,29 @@ export default function LiveMonitor() {
                                                     {currentMission.assigned_drone_id ||
                                                         "None"}
                                                 </div>
+                                                {currentMission.mission_phase && (
+                                                    <div className="mt-2 pt-2 border-t">
+                                                        <span
+                                                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                                currentMission.mission_phase ===
+                                                                "traveling"
+                                                                    ? "bg-blue-100 text-blue-800"
+                                                                    : currentMission.mission_phase ===
+                                                                        "surveying"
+                                                                      ? "bg-green-100 text-green-800"
+                                                                      : "bg-yellow-100 text-yellow-800"
+                                                            }`}
+                                                        >
+                                                            Phase:{" "}
+                                                            {currentMission.mission_phase
+                                                                .charAt(0)
+                                                                .toUpperCase() +
+                                                                currentMission.mission_phase.slice(
+                                                                    1,
+                                                                )}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

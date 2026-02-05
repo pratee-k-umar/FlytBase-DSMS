@@ -8,6 +8,8 @@ export default function Missions() {
     const [loadingMissionId, setLoadingMissionId] = useState<string | null>(
         null,
     );
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const itemsPerPage = 10;
 
     const { data: missionsData, isLoading, refetch } = useQuery({
         queryKey: ["missions", selectedStatus],
@@ -66,6 +68,18 @@ export default function Missions() {
 
     const missions = missionsData?.data || [];
 
+    // Pagination logic
+    const totalPages = Math.ceil(missions.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedMissions = missions.slice(startIndex, endIndex);
+
+    // Reset to page 1 when status filter changes
+    const handleStatusChange = (status: string) => {
+        setSelectedStatus(status);
+        setCurrentPage(1);
+    };
+
     const statuses = [
         { value: "all", label: "All" },
         { value: "draft", label: "Draft" },
@@ -119,7 +133,7 @@ export default function Missions() {
                 {statuses.map((status) => (
                     <button
                         key={status.value}
-                        onClick={() => setSelectedStatus(status.value)}
+                        onClick={() => handleStatusChange(status.value)}
                         className={`px-4 py-2 rounded-md border transition-all ${
                             selectedStatus === status.value
                                 ? "bg-foreground text-background border-foreground"
@@ -133,11 +147,16 @@ export default function Missions() {
 
             {/* Missions Table */}
             <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b">
+                <div className="px-6 py-4 border-b flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-card-foreground">
                         {missions.length} Mission
                         {missions.length !== 1 ? "s" : ""}
                     </h2>
+                    {missions.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            Showing {startIndex + 1}-{Math.min(endIndex, missions.length)} of {missions.length}
+                        </p>
+                    )}
                 </div>
 
                 {isLoading ? (
@@ -177,7 +196,7 @@ export default function Missions() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {missions.map((mission: any) => (
+                                {paginatedMissions.map((mission: any) => (
                                     <tr
                                         key={mission.mission_id}
                                         className="hover:bg-muted/50 transition-colors"
@@ -326,6 +345,43 @@ export default function Missions() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {missions.length > itemsPerPage && (
+                    <div className="px-6 py-4 border-t flex items-center justify-between">
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 text-sm font-medium rounded-md bg-muted text-foreground hover:bg-muted/70 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Previous
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                        currentPage === page
+                                            ? "bg-foreground text-background"
+                                            : "bg-muted text-foreground hover:bg-muted/70"
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 text-sm font-medium rounded-md bg-muted text-foreground hover:bg-muted/70 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Next
+                        </button>
                     </div>
                 )}
             </div>

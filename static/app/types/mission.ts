@@ -37,6 +37,8 @@ export interface Mission {
         | "failed";
     progress: number;
     current_waypoint_index: number;
+    mission_phase?: "traveling" | "surveying" | "returning";
+    origin_base_id?: string;
     actual_start_time?: string;
     actual_end_time?: string;
     started_at?: string;

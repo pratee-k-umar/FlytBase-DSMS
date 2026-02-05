@@ -76,6 +76,21 @@ class Mission(BaseDocument):
     # Execution State
     progress = FloatField(default=0.0)  # percentage
     current_waypoint_index = IntField(default=0)
+    
+    # Mission Phase: 'traveling' (to mission), 'surveying' (coverage pattern), 'returning' (to base)
+    mission_phase = StringField(
+        choices=['traveling', 'surveying', 'returning'],
+        default='traveling'
+    )
+    
+    # Base tracking - which base the drone was dispatched from
+    origin_base_id = StringField()  # For handoff - replacement comes from same base
+    
+    # Handoff tracking - for rendezvous handoff
+    pending_replacement_drone_id = StringField()  # Drone en route to help (status='dispatching')
+    handoff_location = DictField()  # GeoJSON Point where handoff will occur
+    abort_reason = StringField()  # Why mission was aborted (if applicable)
+    
     actual_start_time = DateTimeField()
     actual_end_time = DateTimeField()
     started_at = DateTimeField()

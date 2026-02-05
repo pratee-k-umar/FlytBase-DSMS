@@ -23,6 +23,7 @@ class DroneSerializer(serializers.Serializer):
     camera_specs = serializers.DictField(required=False)
     payload_capacity = serializers.FloatField(required=False)
     assigned_site = serializers.CharField(allow_blank=True, required=False)
+    base_id = serializers.CharField(allow_blank=True, required=False)
     total_flight_hours = serializers.FloatField(read_only=True)
     health_status = serializers.CharField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
@@ -40,6 +41,7 @@ class DroneCreateSerializer(serializers.Serializer):
     assigned_site = serializers.CharField(
         max_length=100, required=False, allow_blank=True
     )
+    base_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
     max_flight_time = serializers.IntegerField(default=30)
     max_speed = serializers.FloatField(default=15.0)
     max_altitude = serializers.FloatField(default=120.0)

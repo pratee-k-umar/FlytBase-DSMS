@@ -90,13 +90,40 @@ def destination_point(
     return (math.degrees(lng2), math.degrees(lat2))
 
 
+def normalize_longitude(lng: float) -> float:
+    """
+    Normalize longitude to -180 to 180 range.
+    """
+    while lng > 180:
+        lng -= 360
+    while lng < -180:
+        lng += 360
+    return lng
+
+
+def shortest_longitude_diff(lng1: float, lng2: float) -> float:
+    """
+    Calculate the shortest difference between two longitudes,
+    accounting for the 180° wrap-around.
+    
+    Returns a value between -180 and 180.
+    """
+    diff = lng2 - lng1
+    # Normalize to -180 to 180
+    while diff > 180:
+        diff -= 360
+    while diff < -180:
+        diff += 360
+    return diff
+
+
 def interpolate_position(
     start: Tuple[float, float],
     end: Tuple[float, float],
     fraction: float
 ) -> Tuple[float, float]:
     """
-    Linear interpolation between two points.
+    Linear interpolation between two points, handling longitude wrap-around.
     
     Args:
         start: (lng, lat) of start point
@@ -106,7 +133,11 @@ def interpolate_position(
     Returns:
         Interpolated (lng, lat)
     """
-    lng = start[0] + (end[0] - start[0]) * fraction
+    # Use shortest path for longitude (handles antimeridian crossing)
+    lng_diff = shortest_longitude_diff(start[0], end[0])
+    lng = normalize_longitude(start[0] + lng_diff * fraction)
+    
+    # Latitude is straightforward
     lat = start[1] + (end[1] - start[1]) * fraction
     return (lng, lat)
 

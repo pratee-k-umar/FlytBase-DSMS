@@ -1,7 +1,8 @@
 """
 Drone Details Endpoint
-GET   /api/fleet/drones/<id>/  - Get drone details
-PATCH /api/fleet/drones/<id>/  - Update drone
+GET    /api/fleet/drones/<id>/  - Get drone details
+PATCH  /api/fleet/drones/<id>/  - Update drone
+DELETE /api/fleet/drones/<id>/  - Delete drone
 """
 from dsms.api.bases import BaseEndpoint
 from dsms.api.serializers.drone import DroneSerializer, DroneUpdateSerializer
@@ -26,3 +27,8 @@ class DroneDetailsEndpoint(BaseEndpoint):
         
         drone = fleet_service.update_drone(drone_id, serializer.validated_data)
         return self.respond({'data': DroneSerializer(drone).data})
+    
+    def delete(self, request, drone_id):
+        """Delete drone"""
+        fleet_service.delete_drone(drone_id)
+        return self.respond_no_content()

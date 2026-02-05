@@ -46,12 +46,13 @@ def create_drone(data: Dict[str, Any]) -> Drone:
         drone_id=drone_id,
         name=data["name"],
         model=data.get("model", ""),
-        site=data.get("site", ""),
+        manufacturer=data.get("manufacturer", ""),
+        base_id=data.get("base_id", ""),
+        assigned_site=data.get("assigned_site", ""),
         max_flight_time=data.get("max_flight_time", 30),
         max_speed=data.get("max_speed", 15.0),
         max_altitude=data.get("max_altitude", 120.0),
-        sensors=data.get("sensors", ["rgb_camera"]),
-        last_location=data.get("last_location"),
+        payload_capacity=data.get("payload_capacity", 0.5),
         status="available",
         battery_level=100,
     )
@@ -66,7 +67,7 @@ def update_drone(drone_id: str, data: Dict[str, Any]) -> Drone:
 
     # Can't update drone that's in a mission (except battery/location)
     if drone.status == "in_mission":
-        allowed_fields = ["battery_level", "last_location", "last_seen"]
+        allowed_fields = ["battery_level", "location"]
         for key in list(data.keys()):
             if key not in allowed_fields:
                 raise ValidationError(
@@ -77,25 +78,50 @@ def update_drone(drone_id: str, data: Dict[str, Any]) -> Drone:
     allowed_fields = [
         "name",
         "model",
-        "site",
+        "manufacturer",
+        "assigned_site",
         "status",
         "battery_level",
         "max_flight_time",
         "max_speed",
         "max_altitude",
-        "sensors",
-        "last_location",
+        "payload_capacity",
+        "location",
+        "base_id",
     ]
 
     for field in allowed_fields:
         if field in data:
             setattr(drone, field, data[field])
 
-    if "last_location" in data:
-        drone.last_seen = datetime.utcnow()
-
     drone.save()
     return drone
+
+
+def delete_drone(drone_id: str) -> None:
+    """Delete a drone"""
+    drone = get_drone(drone_id)
+
+    # Can't delete drone that's currently in use
+    if drone.status in ["in_flight", "dispatching", "returning"]:
+        raise ValidationError(
+            f"Cannot delete drone '{drone_id}' while it is {drone.status}"
+        )
+
+    # Can't delete if assigned to active mission
+    if drone.current_mission_id:
+        from dsms.models import Mission
+
+        try:
+            mission = Mission.objects.get(mission_id=drone.current_mission_id)
+            if mission.status in ["in_progress", "paused"]:
+                raise ValidationError(
+                    f"Cannot delete drone '{drone_id}' - assigned to active mission '{mission.mission_id}'"
+                )
+        except Mission.DoesNotExist:
+            pass  # Mission doesn't exist, safe to delete
+
+    drone.delete()
 
 
 def update_drone_location(

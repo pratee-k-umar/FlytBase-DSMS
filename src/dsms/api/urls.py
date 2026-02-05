@@ -7,6 +7,7 @@ from django.urls import path
 
 from dsms.api.endpoints import (
     analytics,
+    bases,
     drone_details,
     drone_index,
     fleet_stats,
@@ -68,6 +69,11 @@ urlpatterns = [
         telemetry.MissionTelemetryEndpoint.as_view(),
         name="mission-telemetry",
     ),
+    path(
+        "missions/<str:mission_id>/handoffs/",
+        mission_details.MissionHandoffHistoryEndpoint.as_view(),
+        name="mission-handoffs",
+    ),
     # Fleet / Drones
     path("fleet/drones/", drone_index.DroneIndexEndpoint.as_view(), name="drone-list"),
     path(
@@ -76,6 +82,12 @@ urlpatterns = [
         name="drone-detail",
     ),
     path("fleet/stats/", fleet_stats.FleetStatsEndpoint.as_view(), name="fleet-stats"),
+    # Bases
+    path("bases/", bases.BaseListEndpoint.as_view(), name="base-list"),
+    path("bases/stats/", bases.BaseStatsEndpoint.as_view(), name="base-stats"),
+    path("bases/nearest/", bases.NearestBaseEndpoint.as_view(), name="base-nearest"),
+    path("bases/<str:base_id>/", bases.BaseDetailEndpoint.as_view(), name="base-detail"),
+    path("bases/<str:base_id>/drones/", bases.BaseDronesEndpoint.as_view(), name="base-drones"),
     # Analytics
     path(
         "analytics/summary/",

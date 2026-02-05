@@ -7,6 +7,47 @@ import math
 from typing import Any, Dict, List
 
 from dsms.models.mission import FlightPath, Waypoint
+from dsms.utils.geo import normalize_longitude, shortest_longitude_diff
+
+
+def normalize_survey_area(survey_area: Dict) -> Dict:
+    """
+    Normalize all coordinates in a GeoJSON polygon to valid ranges.
+    This fixes issues from Leaflet map wrapping where longitudes can be
+    outside the -180 to 180 range (e.g., -282 instead of 77).
+    
+    Args:
+        survey_area: GeoJSON Polygon with potentially invalid coordinates
+        
+    Returns:
+        GeoJSON Polygon with normalized coordinates
+    """
+    if not survey_area or "coordinates" not in survey_area:
+        return survey_area
+    
+    normalized = {
+        "type": survey_area.get("type", "Polygon"),
+        "coordinates": []
+    }
+    
+    for ring in survey_area["coordinates"]:
+        normalized_ring = []
+        for coord in ring:
+            if len(coord) >= 2:
+                # coord is [lng, lat] in GeoJSON
+                normalized_coord = [
+                    normalize_longitude(coord[0]),  # Normalize longitude
+                    coord[1]  # Latitude doesn't need normalization (-90 to 90)
+                ]
+                # Preserve any additional elements (e.g., altitude)
+                if len(coord) > 2:
+                    normalized_coord.extend(coord[2:])
+                normalized_ring.append(normalized_coord)
+            else:
+                normalized_ring.append(coord)
+        normalized["coordinates"].append(normalized_ring)
+    
+    return normalized
 
 
 def generate_path(
@@ -25,6 +66,9 @@ def generate_path(
     Returns:
         FlightPath with generated waypoints
     """
+    # Normalize coordinates first to handle Leaflet map wrapping
+    survey_area = normalize_survey_area(survey_area)
+    
     if pattern == "perimeter":
         waypoints = generate_perimeter_path(survey_area, altitude)
     elif pattern == "crosshatch":
@@ -45,6 +89,98 @@ def generate_path(
         total_distance=total_distance,
         estimated_duration=estimated_duration,
     )
+
+
+def generate_travel_path(
+    start_lat: float, start_lng: float, 
+    end_lat: float, end_lng: float, 
+    altitude: float,
+    action: str = 'fly'  # Valid actions: 'fly', 'hover', 'photo', 'video'
+) -> List[Waypoint]:
+    """
+    Generate waypoints for traveling from one point to another.
+    Creates a simple direct path with takeoff, cruise, and approach waypoints.
+    
+    Args:
+        start_lat, start_lng: Starting position (base location)
+        end_lat, end_lng: Ending position (mission start)
+        altitude: Cruise altitude in meters
+        action: Waypoint action type (must be one of: 'fly', 'hover', 'photo', 'video')
+        
+    Returns:
+        List of Waypoint objects for the travel path
+    """
+    waypoints = []
+    
+    # 1. Takeoff waypoint (at start, low altitude) - only for outbound flight
+    if action == 'fly':
+        waypoints.append(Waypoint(
+            lat=start_lat,
+            lng=start_lng,
+            alt=10.0,  # Low altitude for takeoff
+            action=action
+        ))
+    
+    # 2. Climb to cruise altitude (or start return at cruise)
+    waypoints.append(Waypoint(
+        lat=start_lat,
+        lng=start_lng,
+        alt=altitude,
+        action=action
+    ))
+    
+    # 3. Calculate intermediate waypoints for long distances
+    distance = haversine_distance(start_lat, start_lng, end_lat, end_lng)
+    
+    # Add intermediate points for distances > 500m (every ~200m)
+    if distance > 500:
+        num_points = min(int(distance / 200), 10)  # Max 10 intermediate points
+        
+        # Calculate the shortest longitude difference (handles antimeridian)
+        lng_diff = shortest_longitude_diff(start_lng, end_lng)
+        
+        for i in range(1, num_points):
+            ratio = i / (num_points + 1)
+            mid_lat = start_lat + ratio * (end_lat - start_lat)
+            # Use shortest path for longitude to avoid going around the world
+            mid_lng = normalize_longitude(start_lng + ratio * lng_diff)
+            waypoints.append(Waypoint(
+                lat=mid_lat,
+                lng=mid_lng,
+                alt=altitude,
+                action=action
+            ))
+    
+    # 4. Arrival point (at destination, cruise altitude)
+    waypoints.append(Waypoint(
+        lat=end_lat,
+        lng=end_lng,
+        alt=altitude,
+        action=action
+    ))
+    
+    # 5. For return flights, add landing waypoint (descend to low altitude)
+    if action == 'fly':  # Changed from 'return' to 'fly'
+        pass  # No additional landing waypoint needed
+    # Landing handled by hover at final position
+    
+    return waypoints
+
+
+def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate distance in meters between two lat/lng points"""
+    R = 6371000  # Earth radius in meters
+    
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lng = math.radians(lng2 - lng1)
+    
+    a = math.sin(delta_lat / 2) ** 2 + \
+        math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    return R * c
 
 
 def generate_waypoint_path(survey_area: Dict, altitude: float) -> List[Waypoint]:

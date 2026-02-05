@@ -60,6 +60,14 @@ class DroneSimulator:
 
         # Initialize state
         self.current_waypoint_idx = mission.current_waypoint_index or 0
+        self.current_waypoint = self.current_waypoint_idx  # Alias for external access
+
+        # Track travel vs survey vs return waypoints
+        # Travel waypoints are those added when mission starts (use action='fly')
+        # Survey waypoints typically have action='photo' or other survey actions
+        # Return waypoints have action='return' or 'land'
+        self.travel_waypoint_count = self._count_travel_waypoints()
+        self.return_waypoint_start = self._find_return_waypoint_start()
 
         # Starting position
         if self.waypoints:
@@ -83,20 +91,60 @@ class DroneSimulator:
         self.heading = 0.0
         self.battery = initial_battery
 
-        # Progress tracking
+        # Progress tracking - separate travel, survey, and return distances
         self.total_distance = self._calculate_total_distance()
+        self.travel_distance = self._calculate_travel_distance()
+        self.return_distance = self._calculate_return_distance()
+        self.survey_distance = self.total_distance - self.travel_distance - self.return_distance
 
         # Restore distance_traveled from mission progress if resuming
         if mission.progress and mission.progress > 0:
-            # Calculate distance based on saved progress percentage
-            self.distance_traveled = (mission.progress / 100.0) * self.total_distance
+            # Progress is based on survey distance, so calculate survey_distance_traveled
+            self.survey_distance_traveled = (mission.progress / 100.0) * self.survey_distance
+            # Total distance traveled includes completed travel phase + partial survey
+            self.distance_traveled = self.travel_distance + self.survey_distance_traveled
         else:
             self.distance_traveled = 0.0
+            self.survey_distance_traveled = 0.0
 
         self.start_time = datetime.utcnow()
 
+    def _count_travel_waypoints(self) -> int:
+        """Count the number of travel waypoints at the start of the path"""
+        count = 0
+        for wp in self.waypoints:
+            action = getattr(wp, 'action', 'fly')
+            if action == 'fly':
+                count += 1
+            else:
+                break  # First non-fly waypoint marks start of survey
+        return count
+
+    def _find_return_waypoint_start(self) -> int:
+        """Find the index where return waypoints begin"""
+        for i, wp in enumerate(self.waypoints):
+            action = getattr(wp, 'action', '')
+            if action in ('return', 'land'):
+                return i
+        # No return waypoints found
+        return len(self.waypoints)
+
+    def is_traveling(self) -> bool:
+        """Check if drone is still in travel phase (before survey waypoints)"""
+        return self.current_waypoint_idx < self.travel_waypoint_count
+
+    def is_surveying(self) -> bool:
+        """Check if drone is in survey phase (between travel and return)"""
+        return (self.current_waypoint_idx >= self.travel_waypoint_count and 
+                self.current_waypoint_idx < self.return_waypoint_start)
+
+    def is_returning(self) -> bool:
+        """Check if drone is returning to base"""
+        return (self.current_waypoint_idx >= self.return_waypoint_start and 
+                self.current_waypoint_idx < len(self.waypoints))
+
     def _calculate_total_distance(self) -> float:
-        """Calculate total path distance"""
+        """Calculate total path distance (travel + survey)"""
         if len(self.waypoints) < 2:
             return 0.0
 
@@ -116,6 +164,52 @@ class DroneSimulator:
             total += haversine_distance(coord1[0], coord1[1], coord2[0], coord2[1])
 
         return total
+
+    def _calculate_travel_distance(self) -> float:
+        """Calculate distance of travel phase (before survey starts)"""
+        if len(self.waypoints) < 2 or self.travel_waypoint_count < 1:
+            return 0.0
+
+        travel_dist = 0.0
+        # Calculate distance between travel waypoints (indices 0 to travel_waypoint_count-1)
+        for i in range(min(self.travel_waypoint_count, len(self.waypoints) - 1)):
+            wp1 = self.waypoints[i]
+            wp2 = self.waypoints[i + 1]
+
+            # Handle both formats
+            if hasattr(wp1, "location") and wp1.location:
+                coord1 = wp1.location["coordinates"]
+                coord2 = wp2.location["coordinates"]
+            else:
+                coord1 = [wp1.lng, wp1.lat]
+                coord2 = [wp2.lng, wp2.lat]
+
+            travel_dist += haversine_distance(coord1[0], coord1[1], coord2[0], coord2[1])
+
+        return travel_dist
+
+    def _calculate_return_distance(self) -> float:
+        """Calculate distance of return phase (after survey ends)"""
+        if self.return_waypoint_start >= len(self.waypoints):
+            return 0.0
+
+        return_dist = 0.0
+        # Calculate distance between return waypoints
+        for i in range(self.return_waypoint_start, len(self.waypoints) - 1):
+            wp1 = self.waypoints[i]
+            wp2 = self.waypoints[i + 1]
+
+            # Handle both formats
+            if hasattr(wp1, "location") and wp1.location:
+                coord1 = wp1.location["coordinates"]
+                coord2 = wp2.location["coordinates"]
+            else:
+                coord1 = [wp1.lng, wp1.lat]
+                coord2 = [wp2.lng, wp2.lat]
+
+            return_dist += haversine_distance(coord1[0], coord1[1], coord2[0], coord2[1])
+
+        return return_dist
 
     def tick(self, delta_seconds: float = 1.0) -> Dict[str, Any]:
         """
@@ -155,6 +249,10 @@ class DroneSimulator:
             self.position = list(target_pos)
             self.altitude = target_altitude
             self.distance_traveled += distance_to_target
+            
+            # Track survey distance separately (only after travel phase)
+            if self.is_surveying():
+                self.survey_distance_traveled += distance_to_target
 
             # Move to next waypoint
             self.current_waypoint_idx += 1
@@ -177,6 +275,10 @@ class DroneSimulator:
             self.altitude += altitude_diff * fraction
 
             self.distance_traveled += max_distance
+            
+            # Track survey distance separately (only after travel phase)
+            if self.is_surveying():
+                self.survey_distance_traveled += max_distance
 
         # Update heading
         self.heading = bearing(
@@ -192,11 +294,24 @@ class DroneSimulator:
 
     def _create_result(self, complete: bool) -> Dict[str, Any]:
         """Create telemetry result dict"""
+        # Calculate progress based on SURVEY distance only (excludes travel phase)
         progress = 0.0
-        if self.total_distance > 0:
-            progress = min(100.0, (self.distance_traveled / self.total_distance) * 100)
+        if self.survey_distance > 0:
+            progress = min(100.0, (self.survey_distance_traveled / self.survey_distance) * 100)
         elif complete:
             progress = 100.0
+        
+        # Determine mission phase
+        if self.is_traveling():
+            mission_phase = "traveling"
+        elif self.is_surveying():
+            mission_phase = "surveying"
+        elif self.is_returning():
+            mission_phase = "returning"
+        elif complete:
+            mission_phase = "completed"
+        else:
+            mission_phase = "unknown"
 
         return {
             "complete": complete,
@@ -208,7 +323,9 @@ class DroneSimulator:
             "current_waypoint": self.current_waypoint_idx,
             "total_waypoints": len(self.waypoints),
             "progress": round(progress, 2),
+            "mission_phase": mission_phase,
             "distance_traveled": round(self.distance_traveled, 2),
+            "survey_distance_traveled": round(self.survey_distance_traveled, 2),
             "distance_remaining": round(
                 max(0, self.total_distance - self.distance_traveled), 2
             ),

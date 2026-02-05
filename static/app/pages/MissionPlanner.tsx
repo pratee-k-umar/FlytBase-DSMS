@@ -1,11 +1,9 @@
-import { droneService } from "@/services/droneService";
 import { missionService } from "@/services/missionService";
 import type { CreateMissionRequest } from "@/types/mission";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LatLng } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
     MapContainer,
     Marker,
@@ -13,6 +11,7 @@ import {
     TileLayer,
     useMapEvents,
 } from "react-leaflet";
+import { useNavigate } from "react-router-dom";
 
 // Fix Leaflet icon issue
 import L from "leaflet";
@@ -51,12 +50,6 @@ export default function MissionPlanner() {
         altitude: 50,
         speed: 10,
         overlap: 70,
-        assigned_drone_id: "",
-    });
-
-    const { data: dronesData } = useQuery({
-        queryKey: ["drones"],
-        queryFn: droneService.getAll,
     });
 
     const createMissionMutation = useMutation({
@@ -72,7 +65,6 @@ export default function MissionPlanner() {
                 altitude: 50,
                 speed: 10,
                 overlap: 70,
-                assigned_drone_id: "",
             });
             // Redirect to missions page after successful creation
             navigate("/missions");
@@ -116,9 +108,6 @@ export default function MissionPlanner() {
         });
     };
 
-    const availableDrones =
-        dronesData?.data?.filter((d) => d.status === "available") || [];
-
     return (
         <div className="p-8">
             <div className="mb-8">
@@ -153,8 +142,8 @@ export default function MissionPlanner() {
                                 style={{ height: "100%", width: "100%" }}
                             >
                                 <TileLayer
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                                 />
                                 <MapClickHandler onMapClick={handleMapClick} />
 
@@ -264,30 +253,6 @@ export default function MissionPlanner() {
                                         Surveillance
                                     </option>
                                     <option value="delivery">Delivery</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">
-                                    Assign Drone
-                                </label>
-                                <select
-                                    value={formData.assigned_drone_id}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            assigned_drone_id: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-3 py-2 bg-background border rounded-md text-foreground"
-                                >
-                                    <option value="">Select a drone</option>
-                                    {availableDrones.map((drone) => (
-                                        <option key={drone.drone_id} value={drone.drone_id}>
-                                            {drone.name} - {drone.battery_level}
-                                            %
-                                        </option>
-                                    ))}
                                 </select>
                             </div>
 
