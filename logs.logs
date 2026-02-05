@@ -1,0 +1,71 @@
+assets by status 610 KiB [cached] 6 assets
+#17 28.69 orphan modules 1.83 MiB [orphan] 1596 modules
+#17 28.69 runtime modules 2.79 KiB 9 modules
+#17 28.69 cacheable modules 1.33 MiB (javascript) 33 KiB (asset)
+#17 28.69   javascript modules 1.33 MiB
+#17 28.69     modules by path ./node_modules/ 628 KiB 20 modules
+#17 28.69     modules by path ./static/app/ 737 KiB
+#17 28.69       ./static/app/main.tsx + 127 modules 690 KiB [built] [code generated]
+#17 28.69       ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./static/app/styles/globals.css 47.6 KiB [built] [code generated]
+#17 28.69   asset modules 33 KiB (asset) 168 bytes (javascript)
+#17 28.69     ./static/app/assets/images/drone-icon.png 29.6 KiB (asset) 42 bytes (javascript) [built] [code generated]
+#17 28.69     ./node_modules/leaflet/dist/images/layers.png 696 bytes (asset) 42 bytes (javascript) [built] [code generated]
+#17 28.69     ./node_modules/leaflet/dist/images/layers-2x.png 1.23 KiB (asset) 42 bytes (javascript) [built] [code generated]
+#17 28.69     ./node_modules/leaflet/dist/images/marker-icon.png 1.43 KiB (asset) 42 bytes (javascript) [built] [code generated]
+#17 28.69 
+#17 28.69 ERROR in ./static/app/components/ui/badge.tsx 2:0-33
+#17 28.69 Module not found: Error: Can't resolve '@/lib/utils' in '/app/static/app/components/ui'
+#17 28.69  @ ./static/app/pages/Drone.tsx 2:0-46 162:175-180 166:161-166 204:387-392
+#17 28.69  @ ./static/app/App.tsx 7:0-34 12:301-306
+#17 28.69  @ ./static/app/main.tsx 6:0-24 16:144-147
+#17 28.69 
+#17 28.69 ERROR in /app/static/app/components/ui/badge.tsx
+#17 28.69 ./static/app/components/ui/badge.tsx 2:19-32
+#17 28.69 [tsl] ERROR in /app/static/app/components/ui/badge.tsx(2,20)
+#17 28.69       TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+#17 28.69  @ ./static/app/pages/Drone.tsx 2:0-46 162:175-180 166:161-166 204:387-392
+#17 28.69  @ ./static/app/App.tsx 7:0-34 12:301-306
+#17 28.69  @ ./static/app/main.tsx 6:0-24 16:144-147
+#17 28.69 
+#17 28.69 ERROR in /app/static/app/components/ui/button.tsx
+#17 28.69 2:19-32
+#17 28.69 [tsl] ERROR in /app/static/app/components/ui/button.tsx(2,20)
+#17 28.69       TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+#17 28.69 
+#17 28.69 ERROR in /app/static/app/components/ui/card.tsx
+#17 28.69 2:19-32
+#17 28.69 [tsl] ERROR in /app/static/app/components/ui/card.tsx(2,20)
+#17 28.69       TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+#17 28.69 
+#17 28.69 ERROR in /app/static/app/components/ui/table.tsx
+#17 28.69 2:19-32
+#17 28.69 [tsl] ERROR in /app/static/app/components/ui/table.tsx(2,20)
+#17 28.69       TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+#17 28.69 
+#17 28.69 5 errors have detailed information that is not shown.
+#17 28.69 Use 'stats.errorDetails: true' resp. '--stats-error-details' to show it.
+#17 28.69 
+#17 28.69 webpack 5.104.1 compiled with 5 errors in 14150 ms
+#17 ERROR: process "/bin/sh -c npm ci --production=false && npm run build && rm -rf node_modules" did not complete successfully: exit code: 1
+------
+ > [11/13] RUN npm ci --production=false && npm run build && rm -rf node_modules:
+28.69 
+28.69 ERROR in /app/static/app/components/ui/table.tsx
+28.69 2:19-32
+28.69 [tsl] ERROR in /app/static/app/components/ui/table.tsx(2,20)
+28.69       TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+28.69 
+28.69 5 errors have detailed information that is not shown.
+28.69 Use 'stats.errorDetails: true' resp. '--stats-error-details' to show it.
+28.69 
+28.69 webpack 5.104.1 compiled with 5 errors in 14150 ms
+------
+Dockerfile:28
+--------------------
+  26 |     
+  27 |     # Install Node dependencies and build frontend
+  28 | >>> RUN npm ci --production=false && npm run build && rm -rf node_modules
+  29 |     
+  30 |     # Set Python path and Django settings
+--------------------
+error: failed to solve: process "/bin/sh -c npm ci --production=false && npm run build && rm -rf node_modules" did not complete successfully: exit code: 1
