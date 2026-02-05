@@ -7,7 +7,7 @@ Complete installation and configuration guide for the Drone Survey Management Sy
 ### Required Software
 
 - **Python 3.11+** - Backend runtime
-- **Node.js 18+** - Frontend build tools
+- **Node.js 18+ and npm** - Frontend build tools
 - **MongoDB** - Database (Atlas or local)
 - **Redis** - Channel layer for WebSockets (optional for development)
 - **Git** - Version control
@@ -23,7 +23,7 @@ Complete installation and configuration guide for the Drone Survey Management Sy
 ### 1. Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/yourusername/FlytBase-DSMS.git
 cd FlytBase-DSMS
 ```
 
@@ -65,20 +65,41 @@ cd ../..  # Back to project root
 npm install
 ```
 
+This will install all required packages including:
+
+- React 18 + TypeScript
+- shadcn/ui components
+- Tailwind CSS
+- React Query
+- Leaflet for maps
+- Webpack build tools
+
 ### 4. Database Configuration
 
 #### MongoDB Atlas (Recommended)
 
 1. Create free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a new cluster
+2. Create a new cluster (M0 Free tier is sufficient)
 3. Create database user with read/write permissions
-4. Whitelist your IP address (or use 0.0.0.0/0 for development)
-5. Get connection string
+4. Add your IP address to IP Access List (or use 0.0.0.0/0 for development)
+5. Get connection string from Connect → Connect your application
 
 #### Local MongoDB (Alternative)
 
 1. Install MongoDB Community Server
-2. Start MongoDB service
+2. Start MongoDB service:
+
+    ```bash
+    # Windows
+    net start MongoDB
+
+    # macOS (with Homebrew)
+    brew services start mongodb-community
+
+    # Linux
+    sudo systemctl start mongod
+    ```
+
 3. Use connection string: `mongodb://localhost:27017/dsms`
 
 ### 5. Environment Configuration
@@ -86,18 +107,30 @@ npm install
 Create `.env` file in project root:
 
 ```bash
+# Copy from example (if available)
 cp .env.example .env
+
+# Or create new file
+touch .env
 ```
 
 Edit `.env` with your settings:
 
 ```env
-# MongoDB
+# MongoDB Configuration
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/dsms?retryWrites=true&w=majority
 
-# Django
-DJANGO_SECRET_KEY=your-very-secret-key-here-change-this-in-production
-DJANGO_DEBUG=True
+# Redis Configuration (optional for development)
+REDIS_URL=redis://localhost:6379
+
+# Django Configuration
+SECRET_KEY=your-very-secret-key-here-change-this-in-production
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+# Django Settings Module
+DJANGO_SETTINGS_MODULE=dsms.conf.settings.development
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Redis (optional for development)
@@ -107,28 +140,52 @@ REDIS_URL=redis://localhost:6379/0
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 ```
 
-### 6. Initialize Database
+### 6. Seed Initial Data
 
-Seed the database with sample data:
+#### Load DJI Drone Fleet
+
+The project includes a seed script to populate your database with realistic DJI drone models:
 
 ```bash
-python manage.py shell < scripts/seed_data.py
+python scripts/seed_drone_fleet.py
 ```
 
-Or manually:
+This will create:
+
+- **12 DJI drone models** (Mavic 4/3 Pro, Air 3S, Mini 5/4/3/2 SE, Flip, Neo 2/Neo, Avata 2, Inspire 3)
+- **30-45 drones per base** with realistic specifications
+- **Category-based naming** (Alpha/Beta for Mavic, Sky/Cloud for Air, etc.)
+- **Drone images** linked from `/static/drone-gallery/`
+- **Varied specifications** based on drone category (flight time, speed, payload)
+
+#### Create Sample Bases (Optional)
+
+You can create bases manually through the UI or using the Django shell:
 
 ```bash
+cd src/dsms
 python manage.py shell
->>> from scripts.seed_data import seed_all
->>> seed_all()
->>> exit()
+```
+
+```python
+from dsms.models.drone import DroneBase
+
+base = DroneBase(
+    base_id="BASE-0001",
+    name="Central Operations",
+    lat=12.9716,
+    lng=77.5946,
+    capacity=50,
+    status="active"
+)
+base.save()
 ```
 
 ## Running the Application
 
 ### Development Mode
 
-#### Option 1: Unified Development Server (Recommended)
+#### Option 1: Unified Development Script
 
 Run both backend and frontend:
 
@@ -139,7 +196,7 @@ python dev.py
 This starts:
 
 - Django API server on `http://localhost:8000`
-- Webpack dev server with hot reload
+- Webpack dev server on `http://localhost:5173` with hot reload
 
 #### Option 2: Separate Servers
 
@@ -147,27 +204,37 @@ This starts:
 
 ```bash
 cd src/dsms
+# Activate virtual environment first
 venv\Scripts\activate  # Windows
+source venv/bin/activate  # macOS/Linux
+
+# Run Django server
 python manage.py runserver 8000
 ```
 
 **Terminal 2 - Frontend:**
 
 ```bash
+# From project root
 npm run dev:frontend
 ```
 
 ### Access Application
 
-- **Main Application**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/api/
-- **Admin Interface**: http://localhost:8000/admin/
+- **Main Application (Dev)**: http://localhost:5173
+- **API Backend**: http://localhost:8000/api/
+- **Health Check**: http://localhost:8000/health/
+- **Production Build**: http://localhost:8000 (after running `npm run build`)
 
-### Default Login
+### Application Features
 
-After seeding, you can use these test drones:
+After seeding, you can:
 
-- DRN-0001, DRN-0002, DRN-0003, DRN-0004
+- **View Bases**: Navigate to `/bases` to see all operational bases on the map
+- **Manage Drones**: Go to `/drones` to see your DJI fleet with images and specs
+- **Create Missions**: Use `/mission/planner` to plan new survey missions
+- **Monitor Live**: Track active missions at `/mission/monitor`
+- **View Analytics**: Check fleet statistics at `/analytics`
 
 ## Verification
 

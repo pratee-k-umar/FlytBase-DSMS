@@ -16,7 +16,7 @@ function App() {
                     <Route path="/" element={<Layout />}>
                         <Route
                             index
-                            element={<Navigate to="/drones" replace />}
+                            element={<Navigate to="/bases" replace />}
                         />
                         <Route path="drones" element={<Drone />} />
                         <Route path="missions" element={<Missions />} />
@@ -32,7 +32,7 @@ function App() {
                         <Route path="analytics" element={<Analytics />} />
                         <Route
                             path="*"
-                            element={<Navigate to="/drones" replace />}
+                            element={<Navigate to="/bases" replace />}
                         />
                     </Route>
                 </Routes>

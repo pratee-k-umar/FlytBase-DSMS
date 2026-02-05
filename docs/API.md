@@ -40,6 +40,235 @@ Authorization: Bearer <token>
 
 ---
 
+## Base Management
+
+### List All Bases
+
+Get list of all operational bases.
+
+**Endpoint**: `GET /api/bases/`
+
+**Query Parameters**: None
+
+**Response**:
+
+```json
+{
+    "data": [
+        {
+            "base_id": "BASE-0001",
+            "name": "Central Operations",
+            "lat": 12.9716,
+            "lng": 77.5946,
+            "status": "active",
+            "capacity": 50,
+            "drone_count": 35,
+            "created_at": "2026-01-15T10:00:00Z",
+            "updated_at": "2026-02-05T08:30:00Z"
+        }
+    ],
+    "count": 5
+}
+```
+
+**Status Codes**:
+
+- `200 OK` - Success
+
+---
+
+### Create Base
+
+Create a new operational base.
+
+**Endpoint**: `POST /api/bases/`
+
+**Request Body**:
+
+```json
+{
+    "name": "North Operations",
+    "lat": 13.0827,
+    "lng": 80.2707,
+    "capacity": 40,
+    "status": "active"
+}
+```
+
+**Response**:
+
+```json
+{
+    "base_id": "BASE-0006",
+    "name": "North Operations",
+    "lat": 13.0827,
+    "lng": 80.2707,
+    "capacity": 40,
+    "status": "active",
+    "drone_count": 0,
+    "created_at": "2026-02-05T10:00:00Z"
+}
+```
+
+**Status Codes**:
+
+- `201 Created` - Base created successfully
+- `400 Bad Request` - Invalid input data
+
+---
+
+### Get Base Details
+
+Get detailed information about a specific base.
+
+**Endpoint**: `GET /api/bases/{base_id}/`
+
+**Parameters**:
+
+- `base_id` (path) - Base identifier (e.g., "BASE-0001")
+
+**Response**:
+
+```json
+{
+    "base_id": "BASE-0001",
+    "name": "Central Operations",
+    "lat": 12.9716,
+    "lng": 77.5946,
+    "status": "active",
+    "capacity": 50,
+    "drone_count": 35,
+    "created_at": "2026-01-15T10:00:00Z",
+    "updated_at": "2026-02-05T08:30:00Z"
+}
+```
+
+**Status Codes**:
+
+- `200 OK` - Success
+- `404 Not Found` - Base not found
+
+---
+
+### Update Base
+
+Update base information.
+
+**Endpoint**: `PATCH /api/bases/{base_id}/`
+
+**Request Body** (partial update):
+
+```json
+{
+    "status": "maintenance",
+    "capacity": 60
+}
+```
+
+**Response**:
+
+```json
+{
+    "base_id": "BASE-0001",
+    "name": "Central Operations",
+    "status": "maintenance",
+    "capacity": 60,
+    "updated_at": "2026-02-05T12:00:00Z"
+}
+```
+
+**Status Codes**:
+
+- `200 OK` - Updated successfully
+- `404 Not Found` - Base not found
+
+---
+
+### Delete Base
+
+Delete an operational base.
+
+**Endpoint**: `DELETE /api/bases/{base_id}/`
+
+**Response**: `204 No Content`
+
+**Status Codes**:
+
+- `204 No Content` - Deleted successfully
+- `404 Not Found` - Base not found
+
+---
+
+### Get Base Drones
+
+Get all drones assigned to a specific base.
+
+**Endpoint**: `GET /api/bases/{base_id}/drones/`
+
+**Response**:
+
+```json
+{
+    "data": [
+        {
+            "drone_id": "DRN-0001",
+            "name": "Alpha-001",
+            "model": "DJI Mavic 4 Pro",
+            "status": "available",
+            "battery_level": 100
+        }
+    ],
+    "count": 35
+}
+```
+
+---
+
+### Get Base Statistics
+
+Get operational statistics for a base.
+
+**Endpoint**: `GET /api/bases/{base_id}/stats/`
+
+**Response**:
+
+```json
+{
+    "total_drones": 35,
+    "available": 28,
+    "in_mission": 5,
+    "maintenance": 2,
+    "utilization": 71.4
+}
+```
+
+---
+
+### Find Nearest Base
+
+Find the nearest base to given coordinates.
+
+**Endpoint**: `GET /api/bases/nearest/`
+
+**Query Parameters**:
+
+- `lat` (float, required) - Latitude
+- `lng` (float, required) - Longitude
+
+**Response**:
+
+```json
+{
+    "base_id": "BASE-0002",
+    "name": "East Hub",
+    "distance": 12.5,
+    "lat": 12.935,
+    "lng": 77.6244
+}
+```
+
+---
+
 ## Fleet Management
 
 ### List All Drones
@@ -58,25 +287,76 @@ Get list of all drones in the fleet.
         {
             "id": "507f1f77bcf86cd799439011",
             "drone_id": "DRN-0001",
-            "name": "Surveyor Alpha",
-            "model": "DJI Phantom 4 Pro",
+            "name": "Alpha-001",
+            "model": "DJI Mavic 4 Pro",
+            "manufacturer": "DJI",
+            "image_url": "/static/drone-gallery/dji-mavic-4-pro.png",
             "status": "available",
             "battery_level": 95.5,
             "location": {
-                "type": "Point",
-                "coordinates": [77.5946, 12.9716]
+                "latitude": 12.9716,
+                "longitude": 77.5946,
+                "altitude": 0
             },
+            "base_id": "BASE-0001",
             "current_mission_id": null,
-            "last_seen": "2026-01-31T12:00:00Z"
+            "max_flight_time": 45,
+            "max_speed": 21.0,
+            "max_altitude": 120.0,
+            "payload_capacity": 1.2,
+            "health_status": "good",
+            "total_flight_hours": 125.5,
+            "created_at": "2026-01-20T08:00:00Z"
         }
     ],
-    "count": 4
+    "count": 240
 }
 ```
 
 **Status Codes**:
 
 - `200 OK` - Success
+
+---
+
+### Register New Drone
+
+Add a new drone to the fleet.
+
+**Endpoint**: `POST /api/fleet/drones/`
+
+**Request Body**:
+
+```json
+{
+    "name": "Beta-050",
+    "model": "DJI Air 3S",
+    "manufacturer": "DJI",
+    "base_id": "BASE-0002",
+    "max_flight_time": 40,
+    "max_speed": 19.0,
+    "max_altitude": 120.0,
+    "payload_capacity": 0.8
+}
+```
+
+**Response**:
+
+```json
+{
+    "drone_id": "DRN-0241",
+    "name": "Beta-050",
+    "model": "DJI Air 3S",
+    "status": "available",
+    "battery_level": 100,
+    "created_at": "2026-02-05T14:00:00Z"
+}
+```
+
+**Status Codes**:
+
+- `201 Created` - Drone registered successfully
+- `400 Bad Request` - Invalid input data
 
 ---
 

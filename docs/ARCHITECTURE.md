@@ -9,7 +9,8 @@ DSMS follows a modern full-stack architecture with clear separation between fron
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Client Browser                        │
-│                  (React + TypeScript)                    │
+│         React + TypeScript + shadcn/ui                   │
+│         (Bases, Drones, Missions, Analytics)             │
 └────────────┬────────────────────────────────────────────┘
              │ HTTP/REST + WebSocket
              │
@@ -22,10 +23,12 @@ DSMS follows a modern full-stack architecture with clear separation between fron
 │         │                 │                 │            │
 │  ┌──────▼─────────────────▼─────────────────▼────────┐  │
 │  │           Service Layer (Business Logic)          │  │
+│  │  fleet_service | mission_service | analytics     │  │
 │  └──────┬────────────────────────────────────────────┘  │
 │         │                                                │
 │  ┌──────▼────────────────────────────────────────────┐  │
 │  │      Model Layer (MongoEngine ODM)                │  │
+│  │    Drone | Mission | DroneBase | Telemetry       │  │
 │  └──────┬────────────────────────────────────────────┘  │
 └─────────┼────────────────────────────────────────────────┘
           │
@@ -42,42 +45,62 @@ DSMS follows a modern full-stack architecture with clear separation between fron
 **React 18.3** - UI Framework
 
 - Component-based architecture
-- Hooks for state management
+- Hooks for state management (useState, useEffect)
 - TypeScript for type safety
+- Functional components throughout
 
-**TanStack Query** - Data Management
+**TanStack Query v5** - Data Management
 
-- Server state caching
-- Automatic refetching
-- Optimistic updates
-- Polling for real-time updates (1s intervals)
+- Server state caching and synchronization
+- Automatic refetching and background updates
+- Optimistic updates for instant UI feedback
+- Query invalidation on mutations
+- Loading and error states
 
-**Leaflet** - Mapping
+**shadcn/ui** - Component Library
 
-- Interactive map rendering
+- Accessible components built on Radix UI
+- Customizable with Tailwind CSS
+- Badge, Button, Card, Table components
+- Consistent design system
+
+**Leaflet + React Leaflet** - Mapping
+
+- Interactive map rendering with OpenStreetMap
+- Custom markers for bases and drones
 - Polygon drawing and visualization
-- Marker positioning for drones
-- Multi-layer support (coverage, paths)
+- Real-time position updates
+- Multi-layer support
 
 **Tailwind CSS** - Styling
 
 - Utility-first CSS framework
+- Neutral color scheme (bg-card, text-foreground)
+- Responsive design system
 - Custom theme configuration
-- Responsive design
 
-**Webpack** - Build Tool
+**Webpack 5** - Build Tool
 
-- Module bundling
+- Module bundling with code splitting
 - Development server with HMR
+- TypeScript compilation via ts-loader
+- Path alias resolution (@/)
 - Production optimization
+
+**Lucide React** - Icons
+
+- 1000+ consistent SVG icons
+- Tree-shakeable for optimal bundle size
+- Used throughout UI (Battery, Building2, Gauge, etc.)
 
 ### Backend Layer
 
 **Django 6.0** - Web Framework
 
-- URL routing
-- Middleware pipeline
-- Settings management
+- URL routing and view handling
+- Middleware pipeline (CORS, security)
+- Settings management (development/production)
+- Static file serving
 - Development server
 
 **Django REST Framework** - API Layer

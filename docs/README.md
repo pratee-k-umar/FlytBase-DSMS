@@ -1,50 +1,81 @@
 # Drone Survey Management System (DSMS)
 
-A comprehensive full-stack web application for managing drone survey operations, real-time mission monitoring, fleet management, and analytics.
+A comprehensive full-stack web application for managing drone survey operations with real-time monitoring, fleet management, base operations, and analytics.
 
 ## 🚁 Overview
 
 DSMS provides a complete solution for drone-based survey operations with features including:
 
+- **Base Management**: Create and manage operational bases with map visualization
+- **Drone Fleet**: Monitor DJI drone fleet with detailed specifications and real-time status
 - **Mission Planning**: Draw survey areas on interactive maps and configure flight parameters
-- **Live Monitoring**: Real-time drone tracking with telemetry updates
-- **Fleet Management**: Monitor drone status, battery levels, and availability
-- **Analytics**: Comprehensive mission reports with flight path visualization
+- **Live Monitoring**: Real-time drone tracking with WebSocket telemetry updates
+- **Analytics**: Comprehensive mission reports and fleet utilization metrics
 - **Automated Simulation**: Background drone flight simulation with physics-based movement
 
 ## ✨ Key Features
 
+### Base Management
+
+- Create operational bases with geographic coordinates
+- Interactive Leaflet map with all base locations
+- Status tracking (active, maintenance, offline)
+- Filter bases by status
+- Inline status editing
+- View assigned drones per base
+- Nearest base finder
+
+### Drone Fleet Management
+
+- Support for 12 DJI drone models (Mavic, Air, Mini, Flip, Neo, Avata, Inspire)
+- Hero layout with large drone images
+- Detailed specifications (flight time, speed, altitude, payload)
+- Real-time battery and health monitoring
+- Add new drones with technical specs
+- Assign drones to bases
+- Filter by base and status
+- Camera specifications display
+
 ### Mission Management
 
 - Create missions with polygon survey areas
+- Multiple flight patterns (crosshatch, perimeter, spiral, waypoint)
 - Configure flight parameters (altitude, speed, overlap)
-- Auto-generate crosshatch flight paths
-- Assign drones to missions
+- Auto-generate flight paths with waypoints
+- Assign available drones to missions
+- Schedule mission start times
 - Track mission progress in real-time
 
 ### Live Monitoring
 
 - Real-time drone position tracking on interactive maps
+- WebSocket-based telemetry streaming
 - Battery level and telemetry monitoring
 - Coverage area visualization
-- Mission control (pause, resume, abort)
-- Auto-recovery for interrupted missions
-
-### Fleet Dashboard
-
-- Fleet status overview (total, available, in mission, maintenance)
-- Individual drone status cards with battery indicators
-- Real-time status updates
+- Mission control (start, pause, resume, abort)
+- Current waypoint and progress indicators
 
 ### Analytics & Reports
 
-- Mission statistics (total, completed, in progress, failed)
-- Fleet performance metrics
-- Total flight time and area covered calculations
-- Interactive mission details with flight path visualization
-- Actual vs planned path comparison
+- System-wide overview dashboard
+- Mission completion timeline
+- Fleet utilization metrics
+- Drone performance statistics
+- Total flight hours and area covered
+- Base operational statistics
+- Interactive charts and visualizations
 
 ## 🛠️ Tech Stack
+
+### Frontend
+
+- **Framework**: React 18 + TypeScript
+- **UI Library**: shadcn/ui + Tailwind CSS
+- **State Management**: React Query + Zustand
+- **Maps**: Leaflet + React Leaflet
+- **Charts**: Recharts
+- **Build Tool**: Webpack 5
+- **Icons**: Lucide React
 
 ### Backend
 

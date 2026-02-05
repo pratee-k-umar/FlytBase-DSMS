@@ -15,14 +15,23 @@ module.exports = (env, argv) => {
         resolve: {
             extensions: [".tsx", ".ts", ".js", ".jsx"],
             alias: {
-                "@": path.resolve(__dirname, "static/app"),
+                "@": path.resolve(__dirname, "static", "app"),
             },
+            modules: [path.resolve(__dirname, "static/app"), "node_modules"],
         },
         module: {
             rules: [
                 {
                     test: /\.(ts|tsx)$/,
-                    use: "ts-loader",
+                    use: {
+                        loader: "ts-loader",
+                        options: {
+                            configFile: path.resolve(
+                                __dirname,
+                                "tsconfig.json",
+                            ),
+                        },
+                    },
                     exclude: /node_modules/,
                 },
                 {
