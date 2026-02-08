@@ -92,6 +92,7 @@ export default function LiveMonitor() {
         queryKey: ["missions", "active"],
         queryFn: () => missionService.getAll({ status: "in_progress" }),
         refetchInterval: autoRefresh ? 5000 : false,
+        refetchIntervalInBackground: true, // Continue polling even when tab is not focused
     });
 
     // Fetch selected mission details (for future WebSocket integration)
@@ -101,6 +102,7 @@ export default function LiveMonitor() {
             selectedMission ? missionService.getById(selectedMission) : null,
         enabled: !!selectedMission,
         refetchInterval: autoRefresh ? 3000 : false,
+        refetchIntervalInBackground: true,
     });
 
     // Fetch latest telemetry for selected mission
@@ -112,6 +114,7 @@ export default function LiveMonitor() {
                 : null,
         enabled: !!selectedMission,
         refetchInterval: autoRefresh ? 1000 : false, // Update every second for smooth movement
+        refetchIntervalInBackground: true,
     });
 
     const pauseMutation = useMutation({

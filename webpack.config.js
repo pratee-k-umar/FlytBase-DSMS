@@ -67,6 +67,7 @@ module.exports = (env, argv) => {
         devServer: {
             port: 3000,
             hot: true,
+            liveReload: true,
             historyApiFallback: true,
             proxy: [
                 {
@@ -75,6 +76,19 @@ module.exports = (env, argv) => {
                     changeOrigin: true,
                 },
             ],
+            client: {
+                overlay: {
+                    errors: true,
+                    warnings: false,
+                },
+                progress: true,
+            },
+            watchFiles: {
+                paths: ["static/app/**/*"],
+                options: {
+                    usePolling: true,
+                },
+            },
         },
         devtool: isDevelopment ? "eval-source-map" : "source-map",
     };

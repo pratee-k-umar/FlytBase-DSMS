@@ -1,0 +1,16 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to keep Render service awake (sleeps after 10 mins)
+    - cron: "*/10 * * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" https://dsms-raqe.onrender.com/health/ || true
+          echo "Health check ping sent at $(date)"

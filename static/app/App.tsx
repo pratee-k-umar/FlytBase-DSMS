@@ -9,36 +9,24 @@ import MissionPlanner from "./pages/MissionPlanner";
 import Missions from "./pages/Missions";
 
 function App() {
-    return (
-        <DeviceRestriction>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={<Layout />}>
-                        <Route
-                            index
-                            element={<Navigate to="/bases" replace />}
-                        />
-                        <Route path="drones" element={<Drone />} />
-                        <Route path="missions" element={<Missions />} />
-                        <Route
-                            path="mission/planner"
-                            element={<MissionPlanner />}
-                        />
-                        <Route
-                            path="mission/monitor"
-                            element={<LiveMonitor />}
-                        />
-                        <Route path="bases" element={<Bases />} />
-                        <Route path="analytics" element={<Analytics />} />
-                        <Route
-                            path="*"
-                            element={<Navigate to="/bases" replace />}
-                        />
-                    </Route>
-                </Routes>
-            </BrowserRouter>
-        </DeviceRestriction>
-    );
+  return (
+    <DeviceRestriction>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Navigate to="/bases" replace />} />
+            <Route path="drones" element={<Drone />} />
+            <Route path="missions" element={<Missions />} />
+            <Route path="mission/planner" element={<MissionPlanner />} />
+            <Route path="mission/monitor" element={<LiveMonitor />} />
+            <Route path="bases" element={<Bases />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="*" element={<Navigate to="/bases" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </DeviceRestriction>
+  );
 }
 
 export default App;
