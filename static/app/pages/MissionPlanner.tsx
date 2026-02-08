@@ -1,6 +1,7 @@
+import baseService from "@/services/baseService";
 import { missionService } from "@/services/missionService";
 import type { CreateMissionRequest } from "@/types/mission";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LatLng } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState } from "react";
@@ -8,6 +9,7 @@ import {
     MapContainer,
     Marker,
     Polygon,
+    Popup,
     TileLayer,
     useMapEvents,
 } from "react-leaflet";
@@ -23,6 +25,18 @@ L.Icon.Default.mergeOptions({
         "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
     shadowUrl:
         "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
+// Custom icon for bases
+const baseIcon = new L.Icon({
+    iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+    shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
 });
 
 function MapClickHandler({
@@ -51,6 +65,15 @@ export default function MissionPlanner() {
         speed: 10,
         overlap: 70,
     });
+
+    // Fetch all bases
+    const { data: basesData } = useQuery({
+        queryKey: ["bases"],
+        queryFn: () => baseService.getAll(),
+    });
+
+    const bases = basesData?.data || [];
+    console.log("Bases data:", bases);
 
     const createMissionMutation = useMutation({
         mutationFn: (data: CreateMissionRequest) => missionService.create(data),
@@ -137,8 +160,8 @@ export default function MissionPlanner() {
                         </div>
                         <div className="h-[600px]">
                             <MapContainer
-                                center={[37.7749, -122.4194]}
-                                zoom={13}
+                                center={[20.5937, 78.9629]}
+                                zoom={5}
                                 style={{ height: "100%", width: "100%" }}
                             >
                                 <TileLayer
@@ -146,6 +169,55 @@ export default function MissionPlanner() {
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                                 />
                                 <MapClickHandler onMapClick={handleMapClick} />
+
+                                {/* Base markers */}
+                                {bases.map((base: any) => (
+                                    <Marker
+                                        key={base.base_id}
+                                        position={[base.lat, base.lng]}
+                                        icon={baseIcon}
+                                    >
+                                        <Popup>
+                                            <div className="p-2">
+                                                <h3 className="font-semibold text-sm mb-1">
+                                                    {base.name}
+                                                </h3>
+                                                <div className="text-xs space-y-1">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Status:
+                                                        </span>
+                                                        <span className="capitalize font-medium">
+                                                            {base.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Capacity:
+                                                        </span>
+                                                        <span>
+                                                            {base.capacity}{" "}
+                                                            drones
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Drones:
+                                                        </span>
+                                                        <span>
+                                                            {base.drone_count ||
+                                                                0}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground mt-1">
+                                                        {base.lat.toFixed(4)},{" "}
+                                                        {base.lng.toFixed(4)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                ))}
 
                                 {polygonPoints.map((point, idx) => (
                                     <Marker key={idx} position={point} />
