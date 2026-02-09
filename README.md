@@ -2,6 +2,8 @@
 
 A full-stack drone fleet management platform with Django REST API backend and React TypeScript frontend. Monitor your drone fleet, plan missions, track real-time telemetry, and manage multiple operational bases.
 
+**🚀 Live Demo:** [https://dsms-raqe.onrender.com](https://dsms-raqe.onrender.com)
+
 ## Features
 
 ### Core Functionality
@@ -9,16 +11,24 @@ A full-stack drone fleet management platform with Django REST API backend and Re
 - **Base Management** - Create and manage operational bases with map visualization
 - **Drone Fleet Management** - Add, monitor, and control DJI drone fleet with detailed specifications
 - **Mission Planning** - Define survey areas, configure flight paths with multiple pattern types
-- **Real-time Mission Monitoring** - Live drone tracking with WebSocket telemetry
+- **Real-time Mission Monitoring** - Live drone tracking with auto-refresh telemetry
 - **Analytics Dashboard** - Fleet statistics, mission history, and performance metrics
 - **Flight Pattern Generator** - Support for waypoint, crosshatch, perimeter, and spiral patterns
+- **Return-to-Base Paths** - Automatic return flight path generation after mission completion
+- **Mission Phase Tracking** - Distinct phases: traveling → surveying → returning → completed
 
 ### User Interface
 
 - **Interactive Map** - Leaflet-based map with base locations and drone positioning
-- **Real-time Updates** - React Query for efficient data fetching and caching
+- **Real-time Updates** - React Query with auto-refresh (works even when tab is in background)
 - **Responsive Design** - Tailwind CSS with shadcn/ui components
-- **Dark Mode Support** - Clean, modern interface with neutral color scheme
+- **Clean White Theme** - Modern interface with neutral color scheme
+
+### DevOps & Reliability
+
+- **GitHub Actions Keep-Alive** - Automated cron job to prevent Render service sleep
+- **Background Polling** - Auto-refresh continues even when browser tab is not focused
+- **Health Endpoint** - `/health/` for monitoring and keep-alive pings
 
 ## Architecture
 
@@ -408,18 +418,42 @@ CORS_ALLOWED_ORIGINS=https://yourdomain.com
 
 ### Real-time Monitoring
 
-- WebSocket-based telemetry streaming
+- Auto-refresh telemetry (1-5 second intervals)
 - Live drone position updates on map
 - Battery level tracking
 - Mission progress percentage
 - Pause/resume/abort controls
+- Mission phases: traveling → surveying → returning → completed
+- Background polling (works even when tab is not focused)
 
 ### Analytics
 
 - Fleet utilization metrics
-- Mission completion statistics
-- Drone health monitoring
+- Mission completion statistics  
+- Completed mission path visualization
+- Survey area display with boundaries
 - Historical performance data
+
+## 🔄 GitHub Actions
+
+### Keep-Alive Cron Job
+
+The project includes a GitHub Actions workflow that pings the Render health endpoint every 10 minutes to prevent the free tier from sleeping:
+
+```yaml
+# .github/workflows/keep-alive.yml
+name: Keep Render Alive
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl https://dsms-raqe.onrender.com/health/
+```
+
+This runs automatically on GitHub's servers, keeping your Render service active 24/7.
 
 ## 🛠️ Technology Highlights
 
