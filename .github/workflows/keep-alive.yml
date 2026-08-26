@@ -12,5 +12,16 @@ jobs:
     steps:
       - name: Ping Health Endpoint
         run: |
-          curl -s -o /dev/null -w "%{http_code}" https://dsms-raqe.onrender.com/health/ || true
+          RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 10 https://dsms-raqe.onrender.com/health/ 2>&1)
+          STATUS=$(echo "$RESPONSE" | tail -n 1)
+          echo "Status Code: $STATUS"
           echo "Health check ping sent at $(date)"
+          if [[ ! "$STATUS" =~ ^[23][0-9]{2}$ ]]; then
+            echo "Warning: Health check returned status $STATUS"
+          fi
+        continue-on-error: true
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Workflow failed! Check GitHub Actions logs for details."

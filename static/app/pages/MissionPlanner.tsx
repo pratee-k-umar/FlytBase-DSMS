@@ -73,7 +73,6 @@ export default function MissionPlanner() {
     });
 
     const bases = basesData?.data || [];
-    console.log("Bases data:", bases);
 
     const createMissionMutation = useMutation({
         mutationFn: (data: CreateMissionRequest) => missionService.create(data),
@@ -147,7 +146,7 @@ export default function MissionPlanner() {
                     <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-card-foreground">
-                                Survey Area
+                                Survey Area (Select atleast 3 points in the map)
                             </h2>
                             {polygonPoints.length > 0 && (
                                 <button
