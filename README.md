@@ -2,7 +2,7 @@
 
 A full-stack drone fleet management platform with Django REST API backend and React TypeScript frontend. Monitor your drone fleet, plan missions, track real-time telemetry, and manage multiple operational bases.
 
-**🚀 Live Demo:** [https://dsms-raqe.onrender.com](https://dsms-raqe.onrender.com)
+** Live Demo:** [https://dsms-raqe.onrender.com](https://dsms-raqe.onrender.com)
 
 ## Features
 
@@ -168,7 +168,7 @@ Access the application:
 - **API**: http://localhost:8000/api/
 - **Health Check**: http://localhost:8000/health/
 
-## 🔧 Development Commands
+## Development Commands
 
 ### Build Commands
 
@@ -194,7 +194,7 @@ python scripts/seed_drone_fleet.py
 python scripts/test_api.py
 ```
 
-## 📚 API Endpoints
+## API Endpoints
 
 ### Bases
 
@@ -264,7 +264,7 @@ Real-time telemetry updates:
 ws://localhost:8000/ws/missions/<mission_id>/telemetry/
 ```
 
-## 🎨 Frontend Routes
+## Frontend Routes
 
 | Route              | Component      | Description                    |
 | ------------------ | -------------- | ------------------------------ |
@@ -275,7 +275,7 @@ ws://localhost:8000/ws/missions/<mission_id>/telemetry/
 | `/mission/monitor` | LiveMonitor    | Real-time mission tracking     |
 | `/analytics`       | Analytics      | Statistics and charts          |
 
-## 📦 Project Structure
+## Project Structure
 
 ### Frontend Components
 
@@ -318,7 +318,7 @@ src/dsms/services/
 └── telemetry_service.py      # Real-time data streaming
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker Deployment (Recommended)
 
@@ -386,7 +386,7 @@ ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
 CORS_ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-## 🎯 Key Features Explained
+## Key Features Explained
 
 ### Base Management
 
@@ -434,7 +434,7 @@ CORS_ALLOWED_ORIGINS=https://yourdomain.com
 - Survey area display with boundaries
 - Historical performance data
 
-## 🔄 GitHub Actions
+## GitHub Actions
 
 ### Keep-Alive Cron Job
 
@@ -455,7 +455,7 @@ jobs:
 
 This runs automatically on GitHub's servers, keeping your Render service active 24/7.
 
-## 🛠️ Technology Highlights
+## Technology Highlights
 
 - **React Query**: Efficient data fetching with automatic caching and background updates
 - **shadcn/ui**: Accessible, customizable components built on Radix UI
@@ -466,14 +466,14 @@ This runs automatically on GitHub's servers, keeping your Render service active 
 - **Django Channels**: WebSocket support for real-time features
 - **Celery**: Background task processing for mission execution
 
-## 📖 Documentation
+## Documentation
 
 - [Architecture Guide](docs/ARCHITECTURE.md) - System design and patterns
 - [API Reference](docs/API.md) - Complete API documentation
 - [Deployment Guide](docs/DEPLOYMENT.md) - Production setup instructions
 - [Setup Guide](docs/SETUP.md) - Detailed development setup
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Frontend build errors
 
@@ -495,18 +495,14 @@ npm install
 - Verify REDIS_URL in .env
 - Ensure CORS settings allow WebSocket connections
 
-## 📝 License
+## License
 
 MIT License - See LICENSE file for details
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📧 Contact
+## Contact
 
 For questions or support, please open an issue on GitHub.
-
----
-
-**Built for the FlytBase Design Challenge** 🚁
