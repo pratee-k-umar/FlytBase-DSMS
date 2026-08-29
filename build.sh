@@ -1,13 +1,13 @@
 #!/bin/bash
 # Production build script for DSMS
 
-echo "🔧 Installing Python dependencies..."
+echo "Installing Python dependencies..."
 pip install -r src/dsms/requirements.txt
 
-echo "📦 Installing Node.js dependencies..."
+echo "Installing Node.js dependencies..."
 npm install
 
-echo "🏗️ Building frontend..."
+echo "Building frontend..."
 npm run build
 
-echo "✅ Build complete!"
+echo "Build complete!"

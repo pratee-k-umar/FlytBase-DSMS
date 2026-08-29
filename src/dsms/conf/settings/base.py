@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from google.auth import default
 
 # Load environment variables
 load_dotenv()

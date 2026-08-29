@@ -19,8 +19,9 @@ def connect_db():
     if _connected:
         return
 
-    mongodb_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017/dsms")
+    mongodb_uri = os.getenv("MONGODB_URI")
     connect(
+        db="flyt-dsms",
         host=mongodb_uri,
         serverSelectionTimeoutMS=5000,
         connectTimeoutMS=20000,

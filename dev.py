@@ -4,10 +4,10 @@ DSMS Unified Development Server
 """
 
 import argparse
+from nt import environ
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 
@@ -126,7 +126,6 @@ def check_mongodb():
         return True
 
     try:
-        import pymongo
         from pymongo import MongoClient
 
         # Check local MongoDB
