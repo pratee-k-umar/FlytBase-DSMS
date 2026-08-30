@@ -339,7 +339,6 @@ def main():
     try:
         if args.frontend_only:
             # Start only Webpack dev server
-            print_colored("\nStarting Webpack dev server...", Colors.CYAN)
             webpack_process = start_webpack_dev_server()
             if webpack_process:
                 processes.append(("Webpack", webpack_process))
@@ -355,7 +354,6 @@ def main():
                 sys.exit(1)
         elif args.django_only:
             # Start only Django server
-            print_colored("\nStarting Django server...", Colors.CYAN)
             django_process = start_django_server()
             if django_process:
                 processes.append(("Django", django_process))
@@ -373,7 +371,6 @@ def main():
                 sys.exit(1)
         else:
             # Start both Django and Webpack dev servers
-            print_colored("\nStarting Django server...", Colors.CYAN)
             django_process = start_django_server()
             if django_process:
                 processes.append(("Django", django_process))
@@ -381,7 +378,6 @@ def main():
                 print_colored("\n[ERROR] Failed to start Django server", Colors.RED)
                 sys.exit(1)
 
-            print_colored("Starting Webpack dev server...", Colors.CYAN)
             webpack_process = start_webpack_dev_server()
             if webpack_process:
                 processes.append(("Webpack", webpack_process))

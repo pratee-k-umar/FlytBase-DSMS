@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from google.auth import default
 
 # Load environment variables
 load_dotenv()
@@ -16,7 +15,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Security
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = False
 ALLOWED_HOSTS = []
 
