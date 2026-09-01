@@ -398,8 +398,8 @@ export default function LiveMonitor() {
                                         }
                                     />
                                     <TileLayer
-                                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                                        attribution="&copy; OpenStreetMap"
+                                        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        attribution='&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                                     />
 
                                     {/* Coverage Area - Survey polygon */}

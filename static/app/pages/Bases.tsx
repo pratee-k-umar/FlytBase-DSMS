@@ -1,3 +1,5 @@
+// import MapLayer from "@/components/Map";
+// import MapLayer from "@/components/Map";
 import baseService, { CreateBaseData } from "@/services/baseService";
 import type { DroneBase } from "@/types/base";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -5,11 +7,11 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import {
     MapContainer,
+    TileLayer,
     Marker,
     Popup,
-    TileLayer,
     useMap,
-    useMapEvents,
+    useMapEvents
 } from "react-leaflet";
 
 // Map Click Handler Component
@@ -419,8 +421,8 @@ export default function Bases() {
                         className="z-0"
                     >
                         <TileLayer
-                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution='&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         />
                         <MapClickHandler onMapClick={handleMapClick} />
                         <MapCenterController
